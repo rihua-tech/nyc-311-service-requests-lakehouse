@@ -2,6 +2,8 @@
 
 ## `silver.service_requests_clean`
 
+Grain: one cleaned service request record after bronze parsing and duplicate handling.
+
 | Column | Description |
 | --- | --- |
 | `request_id` | Standardized service request identifier |
@@ -32,10 +34,49 @@
 | `record_hash` | Hash used for change detection or deduplication |
 | `load_timestamp` | Timestamp when the silver row was created |
 
-## Reference Tables
+## `silver.agency_reference`
 
-- `silver.agency_reference`
-- `silver.complaint_type_reference`
-- `silver.location_reference`
-- `silver.status_reference`
+Grain: one unique agency code from the processed silver batch.
 
+| Column | Description |
+| --- | --- |
+| `agency_code` | Agency code from the silver request table |
+| `agency_name` | Agency display name |
+| `first_seen_created_date` | Earliest created date observed for the agency in the processed batch |
+| `load_timestamp` | Timestamp when the reference row was produced |
+
+## `silver.complaint_type_reference`
+
+Grain: one unique complaint type and descriptor pair from the processed silver batch.
+
+| Column | Description |
+| --- | --- |
+| `complaint_type` | Complaint category |
+| `descriptor` | Complaint descriptor or subtype |
+| `first_seen_created_date` | Earliest created date observed for the complaint type in the processed batch |
+| `load_timestamp` | Timestamp when the reference row was produced |
+
+## `silver.location_reference`
+
+Grain: one unique location key based on ZIP, borough, city, and location type.
+
+| Column | Description |
+| --- | --- |
+| `incident_zip` | Incident ZIP code |
+| `borough` | Canonical borough value |
+| `city` | City or locality value |
+| `location_type` | Location type such as street or residential building |
+| `latitude` | Representative latitude from the processed batch |
+| `longitude` | Representative longitude from the processed batch |
+| `load_timestamp` | Timestamp when the reference row was produced |
+
+## `silver.status_reference`
+
+Grain: one unique request status from the processed silver batch.
+
+| Column | Description |
+| --- | --- |
+| `status_name` | Normalized request status |
+| `status_group` | Starter grouping such as `Open` or `Closed` |
+| `is_closed_status` | Boolean helper indicating whether the status represents closure |
+| `load_timestamp` | Timestamp when the reference row was produced |

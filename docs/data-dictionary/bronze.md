@@ -2,6 +2,8 @@
 
 ## `bronze.nyc311_service_requests_raw`
 
+Grain: one landed source record per ingest event.
+
 | Column | Description |
 | --- | --- |
 | `ingest_id` | Unique identifier for a load event row |
@@ -17,5 +19,5 @@
 ## Notes
 
 - Bronze should remain as close to source as practical.
-- Any parsing beyond basic metadata capture belongs in silver.
-
+- The current local ingestion helpers also maintain a watermark state file, but that watermark is not stored in the bronze table itself.
+- Any parsing beyond metadata capture belongs in silver.
