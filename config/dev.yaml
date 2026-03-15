@@ -1,0 +1,35 @@
+environment: dev
+
+azure:
+  subscription_id: "<your-subscription-id>"
+  resource_group: "rg-nyc311-dev"
+  storage_account: "<your-storage-account>"
+  raw_container: "raw"
+  curated_container: "curated"
+
+adf:
+  factory_name: "adf-nyc311-dev"
+  pipeline_name: "pl_nyc311_ingest"
+
+databricks:
+  workspace_url: "https://<your-databricks-workspace>"
+  catalog: "main"
+  bronze_schema: "bronze"
+  silver_schema: "silver"
+  gold_schema: "gold"
+  cluster_id: "<your-cluster-id>"
+
+source:
+  system_name: "nyc_311_api"
+  base_url: "https://data.cityofnewyork.us/resource/erm2-nwe9.json"
+  page_size: 1000
+  max_pages_per_run: 10
+  timeout_seconds: 30
+  order_by: "created_date ASC"
+  watermark_field: "created_date"
+  watermark_state_path: "local_state/dev_nyc311_watermark.json"
+
+bronze:
+  raw_landing_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/"
+  checkpoint_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/"
+  table_name: "bronze.nyc311_service_requests_raw"

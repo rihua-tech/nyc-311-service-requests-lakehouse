@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDEs
+.idea/
+.vscode/
+
+# Local data and notebooks
+*.db
+*.log
+*.tmp
+
+# Databricks / Azure local artifacts
+.databricks/
+.env
+

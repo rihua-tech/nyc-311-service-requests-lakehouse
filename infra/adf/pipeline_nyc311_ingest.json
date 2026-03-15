@@ -1,0 +1,25 @@
+{
+  "name": "pl_nyc311_ingest",
+  "properties": {
+    "description": "Starter ADF pipeline placeholder for NYC 311 API ingestion.",
+    "activities": [
+      {
+        "name": "ExtractNYC311",
+        "type": "Copy",
+        "notes": "TODO: configure HTTP source and ADLS sink."
+      },
+      {
+        "name": "TriggerBronzeNotebook",
+        "type": "DatabricksNotebook",
+        "notes": "TODO: wire notebook path and cluster configuration."
+      }
+    ],
+    "parameters": {
+      "run_date": {
+        "type": "string",
+        "defaultValue": "<yyyy-mm-dd>"
+      }
+    }
+  }
+}
+

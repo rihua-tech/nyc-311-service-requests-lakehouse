@@ -1,0 +1,15 @@
+{
+  "table_name": "bronze.nyc311_service_requests_raw",
+  "columns": [
+    {"name": "ingest_id", "type": "string"},
+    {"name": "source_system", "type": "string"},
+    {"name": "source_record_id", "type": "string"},
+    {"name": "ingest_timestamp", "type": "timestamp"},
+    {"name": "ingest_date", "type": "date"},
+    {"name": "api_pull_timestamp", "type": "timestamp"},
+    {"name": "raw_payload", "type": "string"},
+    {"name": "record_hash", "type": "string"},
+    {"name": "file_path", "type": "string"}
+  ]
+}
+

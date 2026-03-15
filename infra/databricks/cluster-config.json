@@ -1,0 +1,11 @@
+{
+  "cluster_name": "dbx-nyc311-starter",
+  "spark_version": "<databricks-runtime-version>",
+  "node_type_id": "<node-type>",
+  "autoscale": {
+    "min_workers": 1,
+    "max_workers": 2
+  },
+  "notes": "Starter placeholder. Tune runtime, policies, and libraries later."
+}
+

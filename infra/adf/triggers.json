@@ -1,0 +1,14 @@
+{
+  "triggers": [
+    {
+      "name": "tg_nyc311_daily_ingest",
+      "type": "ScheduleTrigger",
+      "recurrence": {
+        "frequency": "Day",
+        "interval": 1
+      },
+      "notes": "Placeholder schedule only. Confirm timezone and retry behavior later."
+    }
+  ]
+}
+

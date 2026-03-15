@@ -1,0 +1,15 @@
+{
+  "datasets": [
+    {
+      "name": "ds_nyc311_api_json",
+      "type": "Json",
+      "linkedServiceName": "ls_nyc311_http"
+    },
+    {
+      "name": "ds_adls_nyc311_raw",
+      "type": "Json",
+      "linkedServiceName": "ls_adls_nyc311"
+    }
+  ]
+}
+

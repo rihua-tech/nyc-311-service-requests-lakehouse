@@ -1,0 +1,26 @@
+environment: prod
+
+azure:
+  subscription_id: "<your-subscription-id>"
+  resource_group: "rg-nyc311-prod"
+  storage_account: "<your-storage-account>"
+  raw_container: "raw"
+  curated_container: "curated"
+
+adf:
+  factory_name: "adf-nyc311-prod"
+  pipeline_name: "pl_nyc311_ingest"
+
+databricks:
+  workspace_url: "https://<your-databricks-workspace>"
+  catalog: "main"
+  bronze_schema: "bronze"
+  silver_schema: "silver"
+  gold_schema: "gold"
+  cluster_id: "<your-cluster-id>"
+
+source:
+  base_url: "https://data.cityofnewyork.us/resource/<dataset-id>.json"
+  page_size: 5000
+  watermark_column: "created_date"
+

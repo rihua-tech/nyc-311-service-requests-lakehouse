@@ -1,0 +1,33 @@
+{
+  "table_name": "silver.service_requests_clean",
+  "columns": [
+    {"name": "request_id", "type": "string"},
+    {"name": "created_at", "type": "timestamp"},
+    {"name": "closed_at", "type": "timestamp"},
+    {"name": "updated_at", "type": "timestamp"},
+    {"name": "due_date", "type": "timestamp"},
+    {"name": "agency_code", "type": "string"},
+    {"name": "agency_name", "type": "string"},
+    {"name": "complaint_type", "type": "string"},
+    {"name": "descriptor", "type": "string"},
+    {"name": "status_name", "type": "string"},
+    {"name": "borough", "type": "string"},
+    {"name": "incident_zip", "type": "string"},
+    {"name": "city", "type": "string"},
+    {"name": "latitude", "type": "double"},
+    {"name": "longitude", "type": "double"},
+    {"name": "location_type", "type": "string"},
+    {"name": "channel_type", "type": "string"},
+    {"name": "resolution_description", "type": "string"},
+    {"name": "resolution_time_hours", "type": "double"},
+    {"name": "is_closed", "type": "boolean"},
+    {"name": "is_overdue", "type": "boolean"},
+    {"name": "created_year", "type": "int"},
+    {"name": "created_month", "type": "int"},
+    {"name": "created_date", "type": "date"},
+    {"name": "closed_date", "type": "date"},
+    {"name": "record_hash", "type": "string"},
+    {"name": "load_timestamp", "type": "timestamp"}
+  ]
+}
+

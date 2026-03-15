@@ -1,0 +1,39 @@
+[
+  {
+    "unique_key": "1001",
+    "created_date": "2024-01-01T08:00:00",
+    "closed_date": "2024-01-01T12:00:00",
+    "agency": "DSNY",
+    "agency_name": "Department of Sanitation",
+    "complaint_type": "Missed Collection",
+    "descriptor": "Collection missed",
+    "status": "Closed",
+    "borough": "BROOKLYN",
+    "incident_zip": "11201",
+    "city": "BROOKLYN",
+    "latitude": "40.6931",
+    "longitude": "-73.9897",
+    "location_type": "Residential Building",
+    "open_data_channel_type": "Phone",
+    "resolution_description": "Collection completed"
+  },
+  {
+    "unique_key": "1002",
+    "created_date": "2024-01-02T09:30:00",
+    "closed_date": null,
+    "agency": "DEP",
+    "agency_name": "Department of Environmental Protection",
+    "complaint_type": "Water System",
+    "descriptor": "Leak",
+    "status": "Open",
+    "borough": "QUEENS",
+    "incident_zip": "11101",
+    "city": "LONG ISLAND CITY",
+    "latitude": "40.7447",
+    "longitude": "-73.9485",
+    "location_type": "Street",
+    "open_data_channel_type": "Online",
+    "resolution_description": null
+  }
+]
+

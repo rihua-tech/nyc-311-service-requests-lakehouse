@@ -1,0 +1,17 @@
+{
+  "linkedServices": [
+    {
+      "name": "ls_nyc311_http",
+      "type": "HttpServer",
+      "baseUrl": "https://data.cityofnewyork.us",
+      "notes": "TODO: add authentication only if the chosen API contract requires it."
+    },
+    {
+      "name": "ls_adls_nyc311",
+      "type": "AzureBlobFS",
+      "url": "https://<your-storage-account>.dfs.core.windows.net/",
+      "notes": "TODO: replace placeholders and choose auth pattern."
+    }
+  ]
+}
+

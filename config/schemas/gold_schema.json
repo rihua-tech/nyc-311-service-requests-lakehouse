@@ -1,0 +1,18 @@
+{
+  "tables": [
+    "gold.dim_date",
+    "gold.dim_agency",
+    "gold.dim_complaint_type",
+    "gold.dim_location",
+    "gold.dim_status",
+    "gold.fact_service_requests",
+    "gold.mart_request_volume_daily",
+    "gold.mart_service_performance",
+    "gold.mart_backlog_snapshot"
+  ],
+  "notes": [
+    "Use this file as a starter reference for table inventory.",
+    "Expand with column-level metadata once the dimensional model is finalized."
+  ]
+}
+
