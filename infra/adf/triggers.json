@@ -3,12 +3,39 @@
     {
       "name": "tg_nyc311_daily_ingest",
       "type": "ScheduleTrigger",
-      "recurrence": {
-        "frequency": "Day",
-        "interval": 1
+      "runtimeState": "Stopped",
+      "properties": {
+        "description": "Placeholder recurring trigger for daily NYC 311 ingestion into ADLS bronze with downstream Databricks handoff.",
+        "pipelines": [
+          {
+            "pipelineReference": {
+              "referenceName": "pl_nyc311_ingest",
+              "type": "PipelineReference"
+            },
+            "parameters": {
+              "run_date": "@{formatDateTime(addDays(trigger().scheduledTime,-1),'yyyy-MM-dd')}",
+              "window_start": "@{concat(formatDateTime(addDays(trigger().scheduledTime,-1),'yyyy-MM-dd'),'T00:00:00')}",
+              "window_end": "@{concat(formatDateTime(trigger().scheduledTime,'yyyy-MM-dd'),'T00:00:00')}",
+              "page_size": 1000,
+              "batch_id": "@{concat('adf-',formatDateTime(trigger().scheduledTime,'yyyyMMddHHmm'))}"
+            }
+          }
+        ],
+        "recurrence": {
+          "frequency": "Day",
+          "interval": 1,
+          "timeZone": "Eastern Standard Time",
+          "schedule": {
+            "hours": [
+              1
+            ],
+            "minutes": [
+              15
+            ]
+          }
+        }
       },
-      "notes": "Placeholder schedule only. Confirm timezone and retry behavior later."
+      "notes": "Placeholder schedule only. It documents intended cadence and parameters; it does not mean the trigger is deployed or active."
     }
   ]
 }
-

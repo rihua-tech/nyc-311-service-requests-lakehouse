@@ -2,16 +2,35 @@
   "linkedServices": [
     {
       "name": "ls_nyc311_http",
-      "type": "HttpServer",
-      "baseUrl": "https://data.cityofnewyork.us",
-      "notes": "TODO: add authentication only if the chosen API contract requires it."
+      "type": "RestService",
+      "properties": {
+        "description": "Placeholder linked service for the NYC Open Data 311 API endpoint.",
+        "baseUrl": "https://data.cityofnewyork.us",
+        "authenticationType": "Anonymous",
+        "enableServerCertificateValidation": true
+      },
+      "notes": "Use a Socrata app token or request headers only if the final API contract requires them. No credential is stored here."
     },
     {
       "name": "ls_adls_nyc311",
       "type": "AzureBlobFS",
-      "url": "https://<your-storage-account>.dfs.core.windows.net/",
-      "notes": "TODO: replace placeholders and choose auth pattern."
+      "properties": {
+        "description": "Placeholder ADLS Gen2 linked service for raw, curated, and log storage.",
+        "url": "https://<your-storage-account>.dfs.core.windows.net",
+        "authenticationType": "ManagedIdentity"
+      },
+      "notes": "Replace the storage account placeholder and wire managed identity or Key Vault-backed authentication during deployment."
+    },
+    {
+      "name": "ls_databricks_nyc311",
+      "type": "AzureDatabricks",
+      "properties": {
+        "description": "Placeholder linked service for the Databricks workspace that continues bronze, silver, and gold processing.",
+        "domain": "https://<your-databricks-workspace>",
+        "workspaceResourceId": "/subscriptions/<your-subscription-id>/resourceGroups/rg-nyc311-<env>/providers/Microsoft.Databricks/workspaces/dbw-nyc311-<env>",
+        "existingClusterId": "<your-cluster-id>"
+      },
+      "notes": "No token or secret is included. Final authentication and cluster policy decisions are intentionally left as placeholders."
     }
   ]
 }
-

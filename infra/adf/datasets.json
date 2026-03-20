@@ -2,14 +2,61 @@
   "datasets": [
     {
       "name": "ds_nyc311_api_json",
-      "type": "Json",
-      "linkedServiceName": "ls_nyc311_http"
+      "type": "RestResource",
+      "linkedServiceName": "ls_nyc311_http",
+      "properties": {
+        "description": "Placeholder source dataset for NYC 311 service request extraction.",
+        "relativeUrl": "/resource/erm2-nwe9.json",
+        "format": "Json"
+      }
     },
     {
       "name": "ds_adls_nyc311_raw",
       "type": "Json",
-      "linkedServiceName": "ls_adls_nyc311"
+      "linkedServiceName": "ls_adls_nyc311",
+      "properties": {
+        "description": "Placeholder sink dataset for raw NYC 311 payload landing in the bronze zone.",
+        "location": {
+          "fileSystem": "raw",
+          "folderPath": "nyc311/service_requests/raw/ingest_date=@{dataset().ingest_date}",
+          "fileName": "nyc311_service_requests_@{dataset().batch_id}.json"
+        },
+        "format": "Json",
+        "parameters": {
+          "ingest_date": {
+            "type": "string",
+            "defaultValue": "<yyyy-mm-dd>"
+          },
+          "batch_id": {
+            "type": "string",
+            "defaultValue": "<adf-run-id>"
+          }
+        }
+      }
+    },
+    {
+      "name": "ds_adls_nyc311_ingest_manifest",
+      "type": "Json",
+      "linkedServiceName": "ls_adls_nyc311",
+      "properties": {
+        "description": "Optional placeholder dataset for per-run handoff metadata that downstream Databricks jobs can read after raw landing.",
+        "location": {
+          "fileSystem": "raw",
+          "folderPath": "nyc311/service_requests/checkpoints/adf_handoff/run_date=@{dataset().run_date}",
+          "fileName": "ingest_manifest_@{dataset().batch_id}.json"
+        },
+        "format": "Json",
+        "parameters": {
+          "run_date": {
+            "type": "string",
+            "defaultValue": "<yyyy-mm-dd>"
+          },
+          "batch_id": {
+            "type": "string",
+            "defaultValue": "<adf-run-id>"
+          }
+        }
+      }
     }
   ]
 }
-

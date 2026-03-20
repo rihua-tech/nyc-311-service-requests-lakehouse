@@ -1,25 +1,103 @@
 {
   "name": "pl_nyc311_ingest",
   "properties": {
-    "description": "Starter ADF pipeline placeholder for NYC 311 API ingestion.",
-    "activities": [
-      {
-        "name": "ExtractNYC311",
-        "type": "Copy",
-        "notes": "TODO: configure HTTP source and ADLS sink."
-      },
-      {
-        "name": "TriggerBronzeNotebook",
-        "type": "DatabricksNotebook",
-        "notes": "TODO: wire notebook path and cluster configuration."
-      }
-    ],
+    "description": "Placeholder ADF pipeline for NYC 311 extraction into ADLS bronze and a Databricks handoff. This file documents the intended orchestration shape only and is not a deployed pipeline definition.",
     "parameters": {
       "run_date": {
         "type": "string",
         "defaultValue": "<yyyy-mm-dd>"
+      },
+      "window_start": {
+        "type": "string",
+        "defaultValue": "<yyyy-mm-dd>T00:00:00"
+      },
+      "window_end": {
+        "type": "string",
+        "defaultValue": "<yyyy-mm-dd>T23:59:59"
+      },
+      "page_size": {
+        "type": "int",
+        "defaultValue": 1000
+      },
+      "batch_id": {
+        "type": "string",
+        "defaultValue": "<adf-run-id>"
       }
-    }
+    },
+    "activities": [
+      {
+        "name": "CopyNYC311ToBronzeRaw",
+        "type": "Copy",
+        "inputs": [
+          {
+            "referenceName": "ds_nyc311_api_json",
+            "type": "DatasetReference"
+          }
+        ],
+        "outputs": [
+          {
+            "referenceName": "ds_adls_nyc311_raw",
+            "type": "DatasetReference",
+            "parameters": {
+              "ingest_date": "@pipeline().parameters.run_date",
+              "batch_id": "@pipeline().parameters.batch_id"
+            }
+          }
+        ],
+        "policy": {
+          "timeout": "01:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 120
+        },
+        "typeProperties": {
+          "source": {
+            "type": "RestSource",
+            "requestMethod": "GET",
+            "relativeUrl": "/resource/erm2-nwe9.json",
+            "queryParameters": {
+              "$limit": "@pipeline().parameters.page_size",
+              "$where": "created_date >= '@{pipeline().parameters.window_start}' AND created_date < '@{pipeline().parameters.window_end}'",
+              "$order": "created_date ASC"
+            },
+            "paginationRules": "Placeholder for REST pagination rules if the extract moves beyond a single bounded response."
+          },
+          "sink": {
+            "type": "JsonSink",
+            "writeMode": "single_file_per_run"
+          }
+        },
+        "notes": "Pull a bounded NYC 311 extract and land the raw response in the bronze landing path under the raw filesystem."
+      },
+      {
+        "name": "RunDatabricksBronzeWorkflowPlaceholder",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "CopyNYC311ToBronzeRaw",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "linkedServiceName": "ls_databricks_nyc311",
+        "policy": {
+          "timeout": "02:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 300
+        },
+        "typeProperties": {
+          "notebookPath": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/01_ingest_nyc311_raw",
+          "baseParameters": {
+            "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=@{pipeline().parameters.run_date}/",
+            "checkpoint_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/",
+            "handoff_manifest_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/adf_handoff/run_date=@{pipeline().parameters.run_date}/ingest_manifest_@{pipeline().parameters.batch_id}.json",
+            "workflow_definition": "infra/databricks/workflow-job.json",
+            "run_date": "@pipeline().parameters.run_date",
+            "batch_id": "@pipeline().parameters.batch_id"
+          }
+        },
+        "notes": "Placeholder handoff only. In a deployed version this would trigger the Databricks workflow or job sequence that continues through silver and gold."
+      }
+    ]
   }
 }
-
