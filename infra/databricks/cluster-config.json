@@ -1,11 +1,32 @@
 {
-  "cluster_name": "dbx-nyc311-starter",
-  "spark_version": "<databricks-runtime-version>",
-  "node_type_id": "<node-type>",
-  "autoscale": {
-    "min_workers": 1,
-    "max_workers": 2
+  "job_cluster_key": "job_cluster_nyc311_standard",
+  "new_cluster": {
+    "cluster_name": "dbx-nyc311-job-<env>",
+    "spark_version": "<databricks-runtime-lts>",
+    "node_type_id": "<your-worker-node-type>",
+    "driver_node_type_id": "<your-driver-node-type>",
+    "policy_id": "<your-cluster-policy-id>",
+    "autoscale": {
+      "min_workers": 1,
+      "max_workers": 2
+    },
+    "autotermination_minutes": 20,
+    "runtime_engine": "STANDARD",
+    "data_security_mode": "SINGLE_USER",
+    "spark_conf": {
+      "spark.sql.session.timeZone": "UTC",
+      "spark.databricks.delta.schema.autoMerge.enabled": "false"
+    },
+    "custom_tags": {
+      "project": "nyc311-service-requests-lakehouse",
+      "workload": "databricks-workflow-placeholder",
+      "environment": "<env>"
+    }
   },
-  "notes": "Starter placeholder. Tune runtime, policies, and libraries later."
+  "job_defaults": {
+    "timeout_seconds": 14400,
+    "max_retries": 1,
+    "min_retry_interval_millis": 300000
+  },
+  "notes": "Placeholder job cluster configuration for the NYC 311 workflow. Replace runtime, node types, policy, access mode, and any library installation strategy before deployment."
 }
-

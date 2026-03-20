@@ -1,21 +1,285 @@
 {
   "name": "wf_nyc311_lakehouse",
-  "tasks": [
+  "format": "MULTI_TASK",
+  "max_concurrent_runs": 1,
+  "queue": {
+    "enabled": true
+  },
+  "manual_prerequisites": [
+    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/00_mounts_and_paths",
+    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/01_secrets_and_widgets"
+  ],
+  "job_clusters": [
     {
-      "task_key": "bronze_ingest",
-      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/01_ingest_nyc311_raw"
-    },
-    {
-      "task_key": "silver_transform",
-      "depends_on": ["bronze_ingest"],
-      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/02_silver/01_clean_service_requests"
-    },
-    {
-      "task_key": "gold_publish",
-      "depends_on": ["silver_transform"],
-      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/06_build_fact_service_requests"
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "config_path": "infra/databricks/cluster-config.json"
     }
   ],
-  "notes": "Placeholder workflow definition for sequencing only."
+  "shared_parameters": {
+    "environment": "<env>",
+    "run_date": "<yyyy-mm-dd>",
+    "catalog": "main",
+    "bronze_schema": "bronze",
+    "silver_schema": "silver",
+    "gold_schema": "gold",
+    "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/",
+    "checkpoint_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/"
+  },
+  "execution_stages": [
+    {
+      "stage": "bronze",
+      "task_keys": [
+        "bronze_ingest_raw",
+        "bronze_dedup_metadata"
+      ]
+    },
+    {
+      "stage": "silver",
+      "task_keys": [
+        "silver_clean_service_requests",
+        "silver_standardize_locations",
+        "silver_standardize_categories",
+        "silver_apply_quality_rules"
+      ]
+    },
+    {
+      "stage": "gold",
+      "task_keys": [
+        "gold_build_dim_date",
+        "gold_build_dim_agency",
+        "gold_build_dim_complaint_type",
+        "gold_build_dim_location",
+        "gold_build_dim_status",
+        "gold_build_fact_service_requests",
+        "gold_build_mart_request_volume_daily",
+        "gold_build_mart_service_performance",
+        "gold_build_mart_backlog_snapshot"
+      ]
+    },
+    {
+      "stage": "validation",
+      "task_keys": [
+        "validate_bronze",
+        "validate_silver",
+        "validate_gold"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "task_key": "bronze_ingest_raw",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/01_ingest_nyc311_raw",
+      "timeout_seconds": 3600
+    },
+    {
+      "task_key": "bronze_dedup_metadata",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "bronze_ingest_raw"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/02_bronze_dedup_metadata",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "silver_clean_service_requests",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "bronze_dedup_metadata"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/02_silver/01_clean_service_requests",
+      "timeout_seconds": 3600
+    },
+    {
+      "task_key": "silver_standardize_locations",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_clean_service_requests"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/02_silver/02_standardize_locations",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "silver_standardize_categories",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_clean_service_requests"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/02_silver/03_standardize_categories",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "silver_apply_quality_rules",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_standardize_locations"
+        },
+        {
+          "task_key": "silver_standardize_categories"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/02_silver/04_apply_quality_rules",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_dim_date",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_apply_quality_rules"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/01_build_dim_date",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_dim_agency",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_apply_quality_rules"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/02_build_dim_agency",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_dim_complaint_type",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_apply_quality_rules"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/03_build_dim_complaint_type",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_dim_location",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_apply_quality_rules"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/04_build_dim_location",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_dim_status",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "silver_apply_quality_rules"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/05_build_dim_status",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_fact_service_requests",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "gold_build_dim_date"
+        },
+        {
+          "task_key": "gold_build_dim_agency"
+        },
+        {
+          "task_key": "gold_build_dim_complaint_type"
+        },
+        {
+          "task_key": "gold_build_dim_location"
+        },
+        {
+          "task_key": "gold_build_dim_status"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/06_build_fact_service_requests",
+      "timeout_seconds": 2400
+    },
+    {
+      "task_key": "gold_build_mart_request_volume_daily",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "gold_build_fact_service_requests"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/07_build_mart_request_volume_daily",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_mart_service_performance",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "gold_build_fact_service_requests"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/08_build_mart_service_performance",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "gold_build_mart_backlog_snapshot",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "gold_build_fact_service_requests"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/03_gold/09_build_mart_backlog_snapshot",
+      "timeout_seconds": 1800
+    },
+    {
+      "task_key": "validate_bronze",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "gold_build_mart_request_volume_daily"
+        },
+        {
+          "task_key": "gold_build_mart_service_performance"
+        },
+        {
+          "task_key": "gold_build_mart_backlog_snapshot"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/04_validation/01_bronze_validation",
+      "timeout_seconds": 1200
+    },
+    {
+      "task_key": "validate_silver",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "validate_bronze"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/04_validation/02_silver_validation",
+      "timeout_seconds": 1200
+    },
+    {
+      "task_key": "validate_gold",
+      "job_cluster_key": "job_cluster_nyc311_standard",
+      "depends_on": [
+        {
+          "task_key": "validate_silver"
+        }
+      ],
+      "notebook_path": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/04_validation/03_gold_validation",
+      "timeout_seconds": 1200
+    }
+  ],
+  "notes": "Placeholder Databricks workflow definition for sequencing and readability only. It documents the intended notebook order and shared job-cluster reuse, but it does not represent a deployed Databricks job."
 }
-
