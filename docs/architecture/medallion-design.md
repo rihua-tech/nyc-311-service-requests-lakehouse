@@ -5,6 +5,7 @@
 - Table: `bronze.nyc311_service_requests_raw`
 - Grain: one ingested source record per load event
 - Current implementation:
+  - intended Azure landing path is `abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=YYYY-MM-DD/`
   - raw JSON payload stored in `raw_payload`
   - ingest metadata such as `ingest_id`, `source_record_id`, `api_pull_timestamp`, `record_hash`, and `file_path`
   - local helper logic for bronze record preparation and batch path generation
@@ -20,6 +21,7 @@
   - derives `created_year`, `created_month`, `created_date`, `closed_date`
   - derives `is_closed`, `is_overdue`, and `resolution_time_hours`
   - removes duplicate `request_id` values
+  - is intended to be materialized by Databricks after the bronze landing and bronze metadata steps succeed
 - Supporting tables:
   - `silver.agency_reference`
   - `silver.complaint_type_reference`
@@ -46,6 +48,7 @@ Current implementation:
 - gold dimensions are built with starter surrogate-key logic based on stable sorting of business keys
 - `gold.fact_service_requests` resolves surrogate keys while retaining selected business columns for readability and downstream compatibility
 - gold marts are implemented as fact-based aggregations for request volume, service performance, and backlog snapshots
+- gold processing is intended to run after silver quality steps and before the separate validation stage
 
 ## Design Notes
 
@@ -53,3 +56,4 @@ Current implementation:
 - the current surrogate-key pattern is intentionally simple and documented in code
 - slowly changing dimensions are not implemented
 - historical status tracking is not implemented, so backlog snapshot logic is a pragmatic current-state approximation
+- validation notebooks are treated as a post-processing check stage rather than a separate medallion layer
