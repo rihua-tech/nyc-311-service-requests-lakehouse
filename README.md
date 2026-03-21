@@ -1,14 +1,17 @@
 # NYC 311 Service Requests Lakehouse
 
-End-to-end Azure + Databricks lakehouse pipeline for operational analytics on NYC 311 service request data.
+Portfolio-style Azure + Databricks lakehouse design for operational analytics on NYC 311 service request data. The repo already implements the core ingestion, transformation, data quality, and gold-modeling logic locally while documenting how the same flow would run in Azure.
 
-## Project Status
+## Resume-Ready Highlights
 
-This repository is an in-progress portfolio project with implemented local foundations for ingestion, transformation, data quality, gold modeling, and mart logic. It is not a completed Azure deployment. The Azure Data Factory, Databricks job, and Power BI delivery assets are still scaffolded and documented rather than fully operational.
+- built local Python helpers for bronze ingestion, silver cleaning and deduplication, reusable data quality checks, and gold dimensions, fact, and marts
+- modeled an Azure-first path using ADF, ADLS Gen2, and Databricks placeholders that are internally consistent across `infra/` and `docs/`
+- designed a medallion structure with metadata-rich bronze records, curated silver outputs, and business-facing gold marts
+- added notebook scaffolds, SQL templates, runbooks, and tests so the project reads like an end-to-end data engineering portfolio piece rather than a single script
 
 ## Project Overview
 
-The project models a practical operational analytics pipeline for NYC 311 service requests. The intended production shape is:
+The project models how NYC 311 service request data could be ingested, curated, validated, and shaped for reporting in an Azure lakehouse. The intended target flow is:
 
 ```text
 NYC 311 API
@@ -19,14 +22,7 @@ NYC 311 API
   -> Power BI
 ```
 
-The repository currently focuses on making that design believable and extendable:
-
-- configurable API extraction helpers and local watermark handling
-- bronze record preparation with ingest metadata and lineage fields
-- silver-layer parsing, normalization, and deduplication logic
-- reusable data quality helpers for nulls, duplicates, schema checks, and row counts
-- gold dimensions, fact-table helpers, and reporting mart aggregations
-- notebook scaffolds, SQL templates, and documentation aligned to the implemented Python modules
+The goal of the repo is to show how a Data Engineer would structure the problem end to end while staying honest about what is already implemented and what is still scaffolded.
 
 ## Business Problem
 
@@ -38,17 +34,50 @@ NYC 311 data is operationally valuable because it reflects how city services are
 - where backlog is building up
 - which operational metrics are stable enough to publish into a reporting layer
 
-This repo is designed to showcase how a Data Engineer would structure that problem end to end, while staying honest about what is and is not fully implemented yet.
+## Current Implementation Status
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Local ingestion helpers | Implemented | `src/ingestion/` covers API extraction, watermark scaffolding, and bronze metadata preparation |
+| Silver transformations | Implemented | `src/transformation/` cleans requests and builds silver reference outputs |
+| Data quality checks | Implemented | reusable null, duplicate, schema, and row-count helpers in `src/quality/` |
+| Gold modeling and marts | Implemented | dimensions, fact, marts, and aligned SQL templates are present |
+| Local tests | Implemented | unit and integration tests cover the Python helper surface |
+| ADF, ADLS, Databricks runtime wiring | Scaffolded | placeholder JSON, notebook order, and runbooks document the intended Azure path |
+| Power BI delivery | Scaffolded | represented as the intended downstream consumer, not a finished asset |
+
+This repository is not a completed Azure deployment. Treat the ADF, Databricks, and storage definitions in `infra/` as starter templates rather than live production artifacts.
+
+## What Is Implemented Locally
+
+- [src/ingestion/api_extract.py](src/ingestion/api_extract.py): paginated NYC 311 extraction helper
+- [src/ingestion/watermark.py](src/ingestion/watermark.py): local watermark state management
+- [src/ingestion/bronze_loader.py](src/ingestion/bronze_loader.py): batch metadata, record hashes, and bronze-style file paths
+- [src/transformation/silver_service_requests.py](src/transformation/silver_service_requests.py): request cleaning, timestamp handling, derivations, and deduplication
+- [src/transformation/silver_reference_tables.py](src/transformation/silver_reference_tables.py): agency, complaint type, location, and status reference extraction
+- [src/quality/](src/quality/): reusable validation helpers for nulls, duplicates, schema checks, and row counts
+- [src/transformation/gold_dimensions.py](src/transformation/gold_dimensions.py), [src/transformation/gold_facts.py](src/transformation/gold_facts.py), and [src/transformation/gold_marts.py](src/transformation/gold_marts.py): gold modeling helpers
+- [sql/ddl/](sql/ddl/) and [sql/marts/](sql/marts/): SQL mirrors for the modeled tables and marts
+- [databricks/notebooks/](databricks/notebooks/): notebook scaffolds aligned to the intended cloud execution order
+
+## What Remains Scaffolded In Azure, Databricks, And Power BI
+
+- ADF deployment, trigger activation, and live secret wiring
+- ADLS raw landing and curated Delta writes from a real Azure runtime
+- Databricks job execution against cloud storage
+- production monitoring, alerting, CI/CD, and infrastructure deployment automation
+- Power BI assets beyond documentation placeholders
 
 ## Architecture
 
-The repo represents an Azure-first lakehouse architecture with local Python helpers standing in for Databricks job logic during the build phase.
+The repo represents an Azure-first lakehouse architecture with local Python helpers standing in for Databricks runtime logic during the build phase.
 
 Supporting documentation:
 
 - [Architecture Diagram](docs/architecture/architecture-diagram.md)
 - [Data Flow](docs/architecture/data-flow.md)
 - [Medallion Design](docs/architecture/medallion-design.md)
+- [Pipeline Runbook](docs/runbooks/pipeline-runbook.md)
 
 ## Medallion Design
 
@@ -56,81 +85,32 @@ Supporting documentation:
 - `silver`: cleaned request-level records plus reusable reference tables for agencies, complaint types, locations, and statuses
 - `gold`: conformed dimensions, a request-level fact table, and business-facing marts for reporting
 
-The local code mirrors the intended layer responsibilities even though the Databricks runtime implementation is still scaffolded.
+The local code mirrors the intended layer responsibilities even though the cloud runtime is still scaffolded.
 
-## Ingestion Flow
+## Gold Outputs And Marts
 
-The ingestion layer is implemented as lightweight local helpers today.
+Gold outputs represented in the repo include:
 
-- [src/ingestion/api_extract.py](src/ingestion/api_extract.py) builds Socrata-style pagination parameters and fetches pages from the NYC 311 endpoint
-- [src/ingestion/watermark.py](src/ingestion/watermark.py) reads and writes a local watermark state file for incremental-load scaffolding
-- [src/ingestion/bronze_loader.py](src/ingestion/bronze_loader.py) attaches ingest metadata, record hashes, and partition-like bronze file paths
-- [config/dev.yaml](config/dev.yaml) contains placeholder dev settings for endpoint, pagination, watermark field, and bronze landing paths
+- dimensions: `gold.dim_date`, `gold.dim_agency`, `gold.dim_complaint_type`, `gold.dim_location`, `gold.dim_status`
+- fact table: `gold.fact_service_requests`
+- `gold.mart_request_volume_daily`: daily request counts
+- `gold.mart_service_performance`: closure counts and average resolution time by agency and complaint type
+- `gold.mart_backlog_snapshot`: open backlog counts by snapshot date, status, and agency
 
-What is not done yet:
-
-- no live ADF orchestration
-- no ADLS write implementation
-- no Databricks job execution against cloud storage
-
-## Silver Transformation Layer
-
-The silver layer has implemented local transformation logic in [src/transformation/silver_service_requests.py](src/transformation/silver_service_requests.py) and [src/transformation/silver_reference_tables.py](src/transformation/silver_reference_tables.py).
-
-Current behavior includes:
-
-- parsing bronze `raw_payload`
-- selecting core service request fields
-- timestamp casting and date derivation
-- borough normalization
-- `is_closed`, `is_overdue`, and `resolution_time_hours` derivation
-- duplicate `request_id` handling
-- reference extraction for agency, complaint type, location, and status dimensions
-
-## Data Quality Layer
-
-The data quality layer is implemented as reusable helper modules under `src/quality/`.
-
-- null checks for required fields and null-count summaries
-- duplicate checks for keys such as `request_id`
-- schema checks for expected columns and simple runtime types
-- row-count reconciliation summaries
-- validation notebook scaffolds and SQL validation queries aligned to bronze, silver, and gold
-
-## Gold Dimensions And Fact Table
-
-The gold modeling layer is implemented in local helper modules and DDL/templates.
-
-- [src/transformation/gold_dimensions.py](src/transformation/gold_dimensions.py) builds `dim_date`, `dim_agency`, `dim_complaint_type`, `dim_location`, and `dim_status`
-- [src/transformation/gold_facts.py](src/transformation/gold_facts.py) builds `gold.fact_service_requests`
-- the current surrogate-key strategy is a starter pattern based on stable sorting of business keys, with `0` used as an unknown-key fallback in the fact builder
-
-The fact table retains a few business columns such as `agency_code`, `complaint_type`, and `status_name` alongside surrogate keys so the repo stays readable and easy to extend.
-
-## Gold Marts
-
-The mart layer is implemented in [src/transformation/gold_marts.py](src/transformation/gold_marts.py).
-
-Current marts:
-
-- `gold.mart_request_volume_daily`: request counts by `created_date`
-- `gold.mart_service_performance`: closed request counts and average resolution time by `agency_code` and `complaint_type`
-- `gold.mart_backlog_snapshot`: open request counts by `snapshot_date`, `status_name`, and `agency_code`
-
-The SQL templates under `sql/marts/` mirror the same mart definitions using the current fact-and-dimension model.
+The mart definitions are implemented in local helper modules and mirrored in the SQL templates under [sql/marts/](sql/marts/).
 
 ## Current Repository Structure
 
 ```text
 .
-|-- config/
-|-- databricks/
-|-- docs/
-|-- infra/
-|-- powerbi/
-|-- sql/
-|-- src/
-`-- tests/
+|-- config/       # environment placeholders and schema settings
+|-- databricks/   # notebook scaffolds and Databricks-side starter assets
+|-- docs/         # architecture notes, runbooks, and data dictionaries
+|-- infra/        # ADF, Databricks, and Azure placeholder definitions
+|-- powerbi/      # documentation placeholders only
+|-- sql/          # DDL, marts, and validation SQL templates
+|-- src/          # implemented local Python helpers
+`-- tests/        # unit and integration tests for the Python modules
 ```
 
 Useful entry points:
@@ -143,6 +123,8 @@ Useful entry points:
 - [src/transformation/gold_facts.py](src/transformation/gold_facts.py)
 - [src/transformation/gold_marts.py](src/transformation/gold_marts.py)
 - [sql/ddl/gold_tables.sql](sql/ddl/gold_tables.sql)
+- [infra/adf/pipeline_nyc311_ingest.json](infra/adf/pipeline_nyc311_ingest.json)
+- [infra/databricks/workflow-job.json](infra/databricks/workflow-job.json)
 
 ## Setup Notes
 
@@ -165,36 +147,7 @@ make test
 Notes:
 
 - notebook files are `.py` exports used as scaffolds, not finished production notebooks
-- local tests validate the helper modules, not a running Spark or Azure environment
-- the repo currently uses `PyYAML` and `pytest` only for local support and tests
-
-## Azure And Databricks Notes
-
-- replace placeholder values in [config/dev.yaml](config/dev.yaml) and [config/prod.yaml](config/prod.yaml)
-- map ADLS containers and storage paths before wiring cloud execution
-- wire secrets through Databricks secret scopes or Azure Key Vault
-- update ADF linked services, datasets, and triggers with real resource names
+- local tests validate the Python helpers, not a running Spark or Azure environment
+- the repo currently uses `PyYAML` and `pytest` for local support and tests
+- replace placeholder values in [config/dev.yaml](config/dev.yaml) and [config/prod.yaml](config/prod.yaml) before attempting any real cloud wiring
 - treat the JSON files in `infra/` as starter templates, not production-ready deployment assets
-
-## Honest Status And Next Steps
-
-What is implemented now:
-
-- local ingestion, transformation, quality, gold-model, and mart helper logic
-- aligned SQL templates, data dictionaries, and notebook scaffolds
-- starter tests covering the local Python surface
-
-What is not implemented yet:
-
-- live Azure Data Factory orchestration
-- actual ADLS landing and Delta writes
-- Databricks DataFrame jobs that replace the local list/dict helper logic
-- deployed Power BI assets
-- CI/CD and infrastructure deployment automation
-
-Pragmatic next steps:
-
-1. Port the local bronze, silver, gold, and mart helpers into Spark DataFrame logic inside Databricks notebooks or jobs.
-2. Wire the ingestion flow to ADLS and persist Delta tables in the intended schemas.
-3. Add environment-aware orchestration and operational monitoring.
-4. Finalize mart definitions against real dashboard requirements before building Power BI assets.

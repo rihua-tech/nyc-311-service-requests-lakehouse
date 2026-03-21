@@ -7,7 +7,7 @@
 | 1 | NYC 311 API | ADF trigger or manual pipeline run | Define a bounded source extract for the requested run window |
 | 2 | `pl_nyc311_ingest` | `CopyNYC311ToBronzeRaw` | Pull `/resource/erm2-nwe9.json` for the selected `run_date`, `window_start`, and `window_end` |
 | 3 | ADF copy activity | ADLS `raw` bronze landing path | Write raw JSON batches under `nyc311/service_requests/raw/ingest_date=YYYY-MM-DD/` |
-| 4 | ADF handoff activity | Databricks workflow `wf_nyc311_lakehouse` | Pass control, `run_date`, raw landing path, and checkpoint path into Databricks |
+| 4 | ADF handoff activity | Databricks notebook handoff toward `wf_nyc311_lakehouse` | Pass `run_date`, raw landing path, and checkpoint path into the Databricks processing chain |
 | 5 | Databricks bronze notebooks | `bronze.nyc311_service_requests_raw` | Ingest raw files and confirm bronze metadata or dedup handling |
 | 6 | Databricks silver notebooks | `silver.service_requests_clean` and silver reference tables | Clean service requests, standardize location and category fields, and apply silver quality rules |
 | 7 | Databricks gold notebooks | Gold dimensions, fact table, and marts | Build curated reporting-ready outputs |
