@@ -1,6 +1,12 @@
 # Architecture Diagram
 
-This document describes the architecture image that should accompany the project. The goal is to let a recruiter, hiring manager, or reviewer understand the system in a few seconds without implying that every Azure component is already deployed.
+This document includes the saved architecture image that accompanies the project. The goal is to let a recruiter, hiring manager, or reviewer understand the system in a few seconds without implying that every Azure component is already deployed.
+
+## Diagram Image
+
+![NYC 311 lakehouse architecture](./nyc311-lakehouse-architecture.png)
+
+This saved PNG gives a quick view of the intended Azure-first lakehouse flow before the detailed notes below.
 
 ## Intended Diagram
 

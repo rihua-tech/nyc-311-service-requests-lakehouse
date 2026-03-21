@@ -24,6 +24,14 @@ NYC 311 API
 
 The goal of the repo is to show how a Data Engineer would structure the problem end to end while staying honest about what is already implemented and what is still scaffolded.
 
+## Architecture Diagram
+
+The saved diagram below gives a quick view of the intended Azure-first lakehouse flow described in this repo.
+
+![NYC 311 lakehouse architecture](docs/architecture/nyc311-lakehouse-architecture.png)
+
+A larger version and supporting notes are available in [docs/architecture/architecture-diagram.md](docs/architecture/architecture-diagram.md).
+
 ## Business Problem
 
 NYC 311 data is operationally valuable because it reflects how city services are requested, triaged, and resolved across agencies and neighborhoods. A lakehouse model makes it easier to answer questions such as:
