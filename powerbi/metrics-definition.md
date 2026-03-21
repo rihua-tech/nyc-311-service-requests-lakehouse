@@ -1,6 +1,6 @@
 # Metrics Definition
 
-These definitions describe the gold marts currently implemented in code and SQL. They are suitable for a starter dashboard mockup, but they are not yet backed by a deployed Power BI semantic model.
+These definitions describe the gold marts currently implemented in code and SQL. They are suitable for a documentation-only dashboard mockup aligned to the current repo state, but they are not yet backed by a deployed Power BI semantic model.
 
 ## Current Reporting Datasets
 

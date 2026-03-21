@@ -1,6 +1,6 @@
 # NYC 311 Dashboard Mockup
 
-This file describes the intended Power BI dashboard layout for the starter repo. It is a documentation-only mockup for a future report build, not a claim that a finished Power BI asset already exists.
+This file describes the intended Power BI dashboard layout for the current repo state. It is a documentation-only mockup aligned to the implemented gold marts, not a claim that a finished Power BI asset already exists.
 
 ## Recommended Page Set
 

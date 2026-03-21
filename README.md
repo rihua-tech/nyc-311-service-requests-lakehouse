@@ -18,6 +18,17 @@ This repo models and partially implements an end-to-end lakehouse for NYC 311 se
 - Short description: End-to-end NYC 311 lakehouse project with implemented bronze, silver, and gold data processing logic, reusable data quality checks, dimensional modeling, and reporting marts, plus scaffolded Azure and Databricks execution assets.
 - Stack tags: Azure Data Factory, Azure Data Lake Storage Gen2, Databricks, PySpark, Python, Delta Lake, SQL, Power BI
 
+## GitHub Metadata Suggestions
+
+- About description: Azure-first medallion lakehouse for NYC 311 service request analytics with implemented bronze, silver, and gold processing, reusable data quality checks, dimensional modeling, and reporting marts.
+- Recommended topics: `azure-data-factory`, `azure-data-lake-storage`, `databricks`, `delta-lake`, `lakehouse`, `medallion-architecture`, `data-engineering`, `dimensional-modeling`, `pyspark`, `power-bi`
+
+## Final Consistency Checklist
+
+- local Python modules implement bronze, silver, and gold processing helpers, reusable data quality checks, and reporting marts
+- ADF, ADLS Gen2, Databricks, and Power BI assets show the intended execution and reporting path but remain scaffolded or documentation-only
+- architecture and reporting documentation align to `gold.mart_request_volume_daily`, `gold.mart_service_performance`, and `gold.mart_backlog_snapshot`
+
 ## Project Overview
 
 The project models how NYC 311 service request data could be ingested, curated, validated, and shaped for reporting in an Azure lakehouse. The intended target flow is:
