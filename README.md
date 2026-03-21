@@ -1,13 +1,22 @@
 # NYC 311 Service Requests Lakehouse
 
-Portfolio-style Azure + Databricks lakehouse design for operational analytics on NYC 311 service request data. The repo already implements the core ingestion, transformation, data quality, and gold-modeling logic locally while documenting how the same flow would run in Azure.
+> Azure-first medallion lakehouse design for NYC 311 service request analytics.
 
-## Resume-Ready Highlights
+This repo models and partially implements an end-to-end lakehouse for NYC 311 service request data. The local code covers bronze ingestion preparation, silver cleaning and deduplication, reusable data quality checks, and gold dimensional outputs and reporting marts, while ADF, ADLS Gen2, and Databricks assets document the intended cloud execution path as scaffolded design rather than a finished deployment.
 
-- built local Python helpers for bronze ingestion, silver cleaning and deduplication, reusable data quality checks, and gold dimensions, fact, and marts
-- modeled an Azure-first path using ADF, ADLS Gen2, and Databricks placeholders that are internally consistent across `infra/` and `docs/`
-- designed a medallion structure with metadata-rich bronze records, curated silver outputs, and business-facing gold marts
-- added notebook scaffolds, SQL templates, runbooks, and tests so the project reads like an end-to-end data engineering portfolio piece rather than a single script
+## Project Highlights
+
+- structured NYC 311 service request data into bronze, silver, and gold layers with clear handoffs from raw ingestion to curated analytics outputs
+- implemented reusable data quality checks for nulls, duplicates, schema validation, and row-count monitoring
+- built gold dimensions, a request-level fact table, and reporting marts for daily volume, service performance, and backlog analysis
+- documented an Azure-first execution path using ADF, ADLS Gen2, and Databricks placeholders aligned to the local implementation
+
+## Project Card Copy
+
+- Title: NYC 311 Service Requests Lakehouse
+- Subtitle: Azure-first medallion lakehouse design for operational analytics
+- Short description: End-to-end NYC 311 lakehouse project with implemented bronze, silver, and gold data processing logic, reusable data quality checks, dimensional modeling, and reporting marts, plus scaffolded Azure and Databricks execution assets.
+- Stack tags: Azure Data Factory, Azure Data Lake Storage Gen2, Databricks, PySpark, Python, Delta Lake, SQL, Power BI
 
 ## Project Overview
 
