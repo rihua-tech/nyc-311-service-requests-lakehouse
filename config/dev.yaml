@@ -16,7 +16,8 @@ databricks:
   sp_client_id_key: "client-id"
   sp_client_secret_key: "client-secret"
   sp_tenant_id_key: "tenant-id"
-  catalog: "hive_metastore"
+  # Manual step: set this to the real Unity Catalog catalog you can access in this workspace.
+  catalog: ""
   bronze_schema: "bronze"
   silver_schema: "silver"
   gold_schema: "gold"
