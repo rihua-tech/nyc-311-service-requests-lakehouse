@@ -17,17 +17,25 @@
 # MAGIC 3. Persist the dimension.
 
 # COMMAND ----------
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES, SILVER_REFERENCE_TABLES
-from src.transformation.gold_dimensions import build_dim_status
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['dim_status']} from {SILVER_REFERENCE_TABLES['status']}")
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+source_table = SILVER_REFERENCE_TABLES["status"]
+target_table = GOLD_TABLES["dim_status"]
 
-sample_status_reference_rows = [
-    {"status_name": "Closed", "status_group": "Closed", "is_closed_status": True},
-    {"status_name": "Open", "status_group": "Open", "is_closed_status": False},
-]
-dim_status_rows = build_dim_status(sample_status_reference_rows)
+status_df = (
+    spark.table(source_table)  # type: ignore[name-defined]
+    .orderBy(F.col("status_name").asc_nulls_last())
+    .withColumn("status_sk", F.row_number().over(Window.orderBy(F.col("status_name").asc_nulls_last())))
+    .withColumn("effective_timestamp", F.current_timestamp())
+    .select("status_sk", "status_name", "status_group", "is_closed_status", "effective_timestamp")
+)
 
-print(f"Prepared {len(dim_status_rows)} dim_status rows")
+write_delta_table(status_df, target_table, config["paths"]["table_paths"][target_table], mode="overwrite")
 
-# TODO: Confirm whether status groupings are needed for reporting.
+print(f"Published {target_table}")
+print(f"dim_status row count: {status_df.count()}")

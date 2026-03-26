@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_DIR = Path("config")
+DEFAULT_CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -31,4 +31,3 @@ def load_environment_config(
 ) -> dict[str, Any]:
     """Load a named environment configuration such as `dev` or `prod`."""
     return load_config(Path(config_dir) / f"{environment}.yaml")
-

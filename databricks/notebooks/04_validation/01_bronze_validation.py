@@ -18,14 +18,15 @@
 
 # COMMAND ----------
 from src.common.constants import BRONZE_TABLE
-from src.quality.duplicate_checks import duplicate_summary
-from src.quality.null_checks import null_counts_by_field
-from src.quality.rowcount_checks import reconciliation_summary
+from src.common.databricks_runtime import bootstrap_notebook
 
-print(f"Scaffold notebook: validate {BRONZE_TABLE}")
+bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
 
-sample_bronze_rows: list[dict[str, object]] = []
-required_bronze_fields = [
+if not spark.catalog.tableExists(BRONZE_TABLE):  # type: ignore[name-defined]
+    raise ValueError(f"{BRONZE_TABLE} does not exist. Run the bronze notebooks first.")
+
+bronze_df = spark.table(BRONZE_TABLE)  # type: ignore[name-defined]
+required_fields = [
     "ingest_id",
     "source_system",
     "source_record_id",
@@ -35,20 +36,22 @@ required_bronze_fields = [
     "file_path",
 ]
 
-metadata_nulls = null_counts_by_field(sample_bronze_rows, required_bronze_fields)
-record_hash_summary = duplicate_summary(sample_bronze_rows, "record_hash")
-raw_payload_presence = reconciliation_summary(
-    expected_count=len(sample_bronze_rows),
-    actual_count=sum(1 for row in sample_bronze_rows if row.get("raw_payload") not in (None, "")),
-    comparison_name="bronze_raw_payload_presence",
-)
+metadata_nulls = {
+    field: bronze_df.filter(f"{field} IS NULL OR trim(cast({field} AS STRING)) = ''").count()
+    for field in required_fields
+}
+duplicate_hash_df = bronze_df.groupBy("record_hash").count().filter("record_hash IS NOT NULL AND count > 1")
+duplicate_hash_rows = sum(row["count"] - 1 for row in duplicate_hash_df.collect())
+raw_payload_presence = bronze_df.filter("raw_payload IS NOT NULL AND trim(raw_payload) != ''").count()
 
-print(
-    "Scaffold bronze validation summary: "
-    f"metadata_nulls={metadata_nulls}, "
-    f"record_hash_summary={record_hash_summary}, "
-    f"raw_payload_presence={raw_payload_presence}"
-)
+summary = {
+    "bronze_row_count": bronze_df.count(),
+    "metadata_nulls": metadata_nulls,
+    "duplicate_record_hash_rows": duplicate_hash_rows,
+    "raw_payload_present_rows": raw_payload_presence,
+}
 
-# TODO: Replace sample rows with Spark reads from `bronze.nyc311_service_requests_raw`.
-# TODO: Add Databricks-specific alerting or failed-batch handling once runtime behavior is defined.
+print(summary)
+
+if any(metadata_nulls.values()) or duplicate_hash_rows or raw_payload_presence != summary["bronze_row_count"]:
+    raise ValueError("Bronze validation failed. Review the printed summary before continuing.")

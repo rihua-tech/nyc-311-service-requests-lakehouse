@@ -18,34 +18,30 @@
 # MAGIC 4. Write the mart.
 
 # COMMAND ----------
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES
-from src.transformation.gold_marts import build_service_performance
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['mart_service_performance']}")
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+target_table = GOLD_TABLES["mart_service_performance"]
 
-sample_fact_rows = [
-    {
-        "agency_code": "DSNY",
-        "complaint_type": "Missed Collection",
-        "resolution_time_hours": 2.0,
-        "is_closed": True,
-    },
-    {
-        "agency_code": "DSNY",
-        "complaint_type": "Missed Collection",
-        "resolution_time_hours": 4.0,
-        "is_closed": True,
-    },
-    {
-        "agency_code": "DEP",
-        "complaint_type": "Water System",
-        "resolution_time_hours": None,
-        "is_closed": False,
-    },
-]
-mart_rows = build_service_performance(sample_fact_rows)
+fact_df = spark.table(GOLD_TABLES["fact_service_requests"])  # type: ignore[name-defined]
+mart_df = (
+    fact_df.filter(F.col("is_closed"))
+    .groupBy("agency_code", "complaint_type")
+    .agg(
+        F.count("*").alias("closed_requests"),
+        F.round(F.avg("resolution_time_hours"), 2).alias("avg_resolution_time_hours"),
+    )
+)
 
-print(f"Prepared {len(mart_rows)} mart_service_performance rows")
+write_delta_table(
+    mart_df,
+    target_table,
+    config["paths"]["table_paths"][target_table],
+    mode="overwrite",
+)
 
-# TODO: Replace sample rows with a Spark read from `gold.fact_service_requests`.
-# TODO: Join gold dimensions in Databricks if richer business labels are needed downstream.
+print(f"Published {target_table}")
+print(f"mart_service_performance row count: {mart_df.count()}")

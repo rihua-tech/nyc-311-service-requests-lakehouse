@@ -17,28 +17,41 @@
 # MAGIC 3. Write the dimension.
 
 # COMMAND ----------
-from src.common.constants import GOLD_TABLES, SILVER_REFERENCE_TABLES
-from src.transformation.gold_dimensions import build_dim_complaint_type
+from pyspark.sql import Window
+from pyspark.sql import functions as F
 
-print(
-    f"Scaffold notebook: build {GOLD_TABLES['dim_complaint_type']} "
-    f"from {SILVER_REFERENCE_TABLES['complaint_type']}"
+from src.common.constants import GOLD_TABLES, SILVER_REFERENCE_TABLES
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
+
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+source_table = SILVER_REFERENCE_TABLES["complaint_type"]
+target_table = GOLD_TABLES["dim_complaint_type"]
+
+complaint_df = (
+    spark.table(source_table)  # type: ignore[name-defined]
+    .orderBy(F.col("complaint_type").asc_nulls_last(), F.col("descriptor").asc_nulls_last())
+    .withColumn(
+        "complaint_type_sk",
+        F.row_number().over(
+            Window.orderBy(F.col("complaint_type").asc_nulls_last(), F.col("descriptor").asc_nulls_last())
+        ),
+    )
+    .withColumn("effective_timestamp", F.current_timestamp())
+    .select(
+        "complaint_type_sk",
+        "complaint_type",
+        "descriptor",
+        "first_seen_created_date",
+        "effective_timestamp",
+    )
 )
 
-sample_complaint_reference_rows = [
-    {
-        "complaint_type": "Noise",
-        "descriptor": "Loud Music",
-        "first_seen_created_date": "2024-01-01",
-    },
-    {
-        "complaint_type": "Water System",
-        "descriptor": "Leak",
-        "first_seen_created_date": "2024-01-02",
-    },
-]
-dim_complaint_type_rows = build_dim_complaint_type(sample_complaint_reference_rows)
+write_delta_table(
+    complaint_df,
+    target_table,
+    config["paths"]["table_paths"][target_table],
+    mode="overwrite",
+)
 
-print(f"Prepared {len(dim_complaint_type_rows)} dim_complaint_type rows")
-
-# TODO: Finalize descriptor handling before dimension columns are locked in.
+print(f"Published {target_table}")
+print(f"dim_complaint_type row count: {complaint_df.count()}")

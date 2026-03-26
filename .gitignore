@@ -4,6 +4,12 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+.tmp/
+.pytest_tmp/
+pytest-cache-files-*/
+**/__pycache__/
+*.pyc
+
 # Virtual environments
 .venv/
 venv/
@@ -20,4 +26,5 @@ venv/
 # Databricks / Azure local artifacts
 .databricks/
 .env
-
+.env.*
+!.env.example
