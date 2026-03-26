@@ -18,16 +18,13 @@
 # MAGIC 3. Validate required runtime values.
 
 # COMMAND ----------
-from src.common.databricks_runtime import (
-    BASE_WIDGET_DEFAULTS,
-    ensure_text_widgets,
-    get_widget,
-    get_widget_int,
-    resolve_runtime_config,
-    validate_catalog_access,
-)
+import importlib
 
-WIDGET_DEFAULTS = dict(BASE_WIDGET_DEFAULTS)
+from src.common import databricks_runtime as runtime
+
+runtime = importlib.reload(runtime)
+
+WIDGET_DEFAULTS = dict(runtime.BASE_WIDGET_DEFAULTS)
 WIDGET_DEFAULTS.update(
     {
         "page_size": "",
@@ -37,39 +34,39 @@ WIDGET_DEFAULTS.update(
 )
 
 try:
-    ensure_text_widgets(dbutils, WIDGET_DEFAULTS)  # type: ignore[name-defined]
-    environment = get_widget(dbutils, "environment", default="dev")  # type: ignore[name-defined]
-    config = resolve_runtime_config(
+    runtime.ensure_text_widgets(dbutils, WIDGET_DEFAULTS)  # type: ignore[name-defined]
+    environment = runtime.get_widget(dbutils, "environment", default="dev")  # type: ignore[name-defined]
+    config = runtime.resolve_runtime_config(
         environment,
         overrides={
-            "run_date": get_widget(dbutils, "run_date", default=""),  # type: ignore[name-defined]
-            "secret_scope": get_widget(dbutils, "secret_scope", default=""),  # type: ignore[name-defined]
-            "page_size": get_widget_int(dbutils, "page_size"),  # type: ignore[name-defined]
-            "max_pages_per_run": get_widget_int(dbutils, "max_pages_per_run"),  # type: ignore[name-defined]
+            "run_date": runtime.get_widget(dbutils, "run_date", default=""),  # type: ignore[name-defined]
+            "secret_scope": runtime.get_widget(dbutils, "secret_scope", default=""),  # type: ignore[name-defined]
+            "page_size": runtime.get_widget_int(dbutils, "page_size"),  # type: ignore[name-defined]
+            "max_pages_per_run": runtime.get_widget_int(dbutils, "max_pages_per_run"),  # type: ignore[name-defined]
         },
     )
 
-    secret_scope = get_widget(  # type: ignore[name-defined]
+    secret_scope = runtime.get_widget(  # type: ignore[name-defined]
         dbutils,
         "secret_scope",
         default=config["databricks"]["secret_scope"],
     )
-    catalog = get_widget(  # type: ignore[name-defined]
+    catalog = runtime.get_widget(  # type: ignore[name-defined]
         dbutils,
         "catalog",
         default=config["databricks"].get("catalog", ""),
     )
-    client_id_key = get_widget(  # type: ignore[name-defined]
+    client_id_key = runtime.get_widget(  # type: ignore[name-defined]
         dbutils,
         "sp_client_id_key",
         default=config["databricks"].get("sp_client_id_key", ""),
     )
-    client_secret_key = get_widget(  # type: ignore[name-defined]
+    client_secret_key = runtime.get_widget(  # type: ignore[name-defined]
         dbutils,
         "sp_client_secret_key",
         default=config["databricks"].get("sp_client_secret_key", ""),
     )
-    tenant_id_key = get_widget(  # type: ignore[name-defined]
+    tenant_id_key = runtime.get_widget(  # type: ignore[name-defined]
         dbutils,
         "sp_tenant_id_key",
         default=config["databricks"].get("sp_tenant_id_key", ""),
@@ -97,7 +94,7 @@ try:
     dbutils.secrets.get(scope=secret_scope, key=tenant_id_key)  # type: ignore[name-defined]
     print("Secret lookups validated successfully.")
 
-    resolved_catalog = validate_catalog_access(spark, config)  # type: ignore[name-defined]
+    resolved_catalog = runtime.validate_catalog_access(spark, config)  # type: ignore[name-defined]
     accessible_catalogs = [str(row[0]) for row in spark.sql("SHOW CATALOGS").collect()]  # type: ignore[name-defined]
     print(f"Validated catalog: {resolved_catalog}")
     print(f"Accessible catalogs in this session: {', '.join(sorted(accessible_catalogs))}")

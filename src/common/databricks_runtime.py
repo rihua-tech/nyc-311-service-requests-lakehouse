@@ -275,6 +275,7 @@ def bootstrap_notebook(
     spark: Any,
     dbutils: Any,
     extra_widget_defaults: Mapping[str, str] | None = None,
+    ensure_catalog_schemas: bool = True,
 ) -> dict[str, Any]:
     """Create widgets, resolve runtime config, configure ADLS, and ensure schemas."""
     widget_defaults = dict(BASE_WIDGET_DEFAULTS)
@@ -308,6 +309,7 @@ def bootstrap_notebook(
         ),
         tenant_id_key=get_widget(dbutils, "sp_tenant_id_key", default=databricks.get("sp_tenant_id_key", "")),
     )
-    ensure_catalog_and_schemas(spark, config)
+    if ensure_catalog_schemas:
+        ensure_catalog_and_schemas(spark, config)
 
     return config

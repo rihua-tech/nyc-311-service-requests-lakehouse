@@ -1,6 +1,7 @@
 from src.common.constants import BRONZE_TABLE, GOLD_TABLES, SILVER_REFERENCE_TABLES, SILVER_TABLE
 import pytest
 
+from src.common import databricks_runtime as runtime
 from src.common.databricks_runtime import build_abfss_uri, resolve_runtime_config, validate_catalog_access
 
 
@@ -51,3 +52,58 @@ def test_validate_catalog_access_raises_clear_error_for_missing_catalog() -> Non
                 },
             },
         )
+
+
+def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {
+        "configured_adls": False,
+        "ensured_catalog": False,
+    }
+
+    class FakeSparkConf:
+        def __init__(self) -> None:
+            self.settings: dict[str, str] = {}
+
+        def set(self, key: str, value: str) -> None:
+            self.settings[key] = value
+
+    class FakeSpark:
+        def __init__(self) -> None:
+            self.conf = FakeSparkConf()
+
+    class FakeWidgets:
+        def __init__(self) -> None:
+            self.values: dict[str, str] = {}
+
+        def get(self, name: str) -> str:
+            if name not in self.values:
+                raise KeyError(name)
+            return self.values[name]
+
+        def text(self, name: str, default: str) -> None:
+            self.values[name] = default
+
+    class FakeDbutils:
+        def __init__(self) -> None:
+            self.widgets = FakeWidgets()
+
+    def fake_configure_adls_service_principal_access(**_: object) -> None:
+        calls["configured_adls"] = True
+
+    def fake_ensure_catalog_and_schemas(*_: object, **__: object) -> None:
+        calls["ensured_catalog"] = True
+
+    monkeypatch.setattr(runtime, "configure_adls_service_principal_access", fake_configure_adls_service_principal_access)
+    monkeypatch.setattr(runtime, "ensure_catalog_and_schemas", fake_ensure_catalog_and_schemas)
+
+    spark = FakeSpark()
+    config = runtime.bootstrap_notebook(
+        spark=spark,
+        dbutils=FakeDbutils(),
+        ensure_catalog_schemas=False,
+    )
+
+    assert calls["configured_adls"] is True
+    assert calls["ensured_catalog"] is False
+    assert spark.conf.settings["spark.sql.session.timeZone"] == "UTC"
+    assert config["environment"] == "dev"

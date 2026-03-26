@@ -19,18 +19,22 @@
 # MAGIC 4. Persist shared path variables for downstream notebooks.
 
 # COMMAND ----------
+import importlib
 from datetime import datetime, timezone
 
-from src.common.databricks_runtime import bootstrap_notebook
+from src.common import databricks_runtime as runtime
+
+runtime = importlib.reload(runtime)
 
 try:
-    config = bootstrap_notebook(
+    config = runtime.bootstrap_notebook(
         spark=spark,  # type: ignore[name-defined]
         dbutils=dbutils,  # type: ignore[name-defined]
         extra_widget_defaults={
             "page_size": "",
             "max_pages_per_run": "",
         },
+        ensure_catalog_schemas=False,
     )
     environment = config["environment"]
     paths = config["paths"]
