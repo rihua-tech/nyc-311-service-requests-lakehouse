@@ -37,6 +37,11 @@ def quote_identifier(identifier: str) -> str:
     return f"`{identifier.replace('`', '``')}`"
 
 
+def _is_missing_external_location_error(exc: Exception) -> bool:
+    message = str(exc)
+    return "NO_PARENT_EXTERNAL_LOCATION_FOR_PATH" in message or "external location" in message.lower()
+
+
 def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
     """Choose the single non-system catalog when the workspace exposes exactly one."""
     excluded_catalogs = {"samples", "system", "hive_metastore", "spark_catalog"}
@@ -276,13 +281,28 @@ def write_delta_table(
     mode: str = "overwrite",
     partition_by: Sequence[str] | None = None,
 ) -> None:
-    """Persist a DataFrame to a Delta table with an explicit ADLS-backed path."""
-    writer = dataframe.write.format("delta").mode(mode).option("path", table_path)
-    if partition_by:
-        writer = writer.partitionBy(*partition_by)
-    if mode == "overwrite":
-        writer = writer.option("overwriteSchema", "true")
-    writer.saveAsTable(table_name)
+    """Persist a DataFrame to a Delta table, preferring explicit path and falling back to managed UC storage."""
+
+    def build_writer(use_explicit_path: bool) -> Any:
+        writer = dataframe.write.format("delta").mode(mode)
+        if use_explicit_path:
+            writer = writer.option("path", table_path)
+        if partition_by:
+            writer = writer.partitionBy(*partition_by)
+        if mode == "overwrite":
+            writer = writer.option("overwriteSchema", "true")
+        return writer
+
+    try:
+        build_writer(use_explicit_path=True).saveAsTable(table_name)
+    except Exception as exc:
+        if not _is_missing_external_location_error(exc):
+            raise
+        print(
+            f"Unity Catalog external location is not configured for {table_path}; "
+            f"writing managed table {table_name} instead."
+        )
+        build_writer(use_explicit_path=False).saveAsTable(table_name)
 
 
 def bootstrap_notebook(

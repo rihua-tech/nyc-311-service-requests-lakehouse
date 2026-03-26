@@ -2,7 +2,7 @@ from src.common.constants import BRONZE_TABLE, GOLD_TABLES, SILVER_REFERENCE_TAB
 import pytest
 
 from src.common import databricks_runtime as runtime
-from src.common.databricks_runtime import build_abfss_uri, resolve_runtime_config, validate_catalog_access
+from src.common.databricks_runtime import build_abfss_uri, resolve_runtime_config, validate_catalog_access, write_delta_table
 
 
 def test_build_abfss_uri_joins_parts_cleanly() -> None:
@@ -137,3 +137,57 @@ def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPat
     assert calls["ensured_catalog"] is False
     assert spark.conf.settings["spark.sql.session.timeZone"] == "UTC"
     assert config["environment"] == "dev"
+
+
+def test_write_delta_table_falls_back_to_managed_table_when_external_location_is_missing() -> None:
+    operations: list[tuple[str, object]] = []
+
+    class FakeWriter:
+        def __init__(self, attempt: int) -> None:
+            self.attempt = attempt
+
+        def format(self, value: str) -> "FakeWriter":
+            operations.append(("format", value))
+            return self
+
+        def mode(self, value: str) -> "FakeWriter":
+            operations.append(("mode", value))
+            return self
+
+        def option(self, key: str, value: str) -> "FakeWriter":
+            operations.append((f"option:{key}", value))
+            return self
+
+        def partitionBy(self, *values: str) -> "FakeWriter":
+            operations.append(("partitionBy", values))
+            return self
+
+        def saveAsTable(self, table_name: str) -> None:
+            operations.append(("saveAsTable", table_name))
+            if self.attempt == 1:
+                raise Exception(
+                    "[NO_PARENT_EXTERNAL_LOCATION_FOR_PATH] No parent external location was found for path "
+                    "'abfss://nyc311@account.dfs.core.windows.net/bronze/table'."
+                )
+
+    class FakeDataFrame:
+        def __init__(self) -> None:
+            self.attempt = 0
+
+        @property
+        def write(self) -> FakeWriter:
+            self.attempt += 1
+            return FakeWriter(self.attempt)
+
+    write_delta_table(
+        FakeDataFrame(),
+        "bronze.nyc311_service_requests_raw",
+        "abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw",
+        mode="overwrite",
+    )
+
+    path_options = [value for key, value in operations if key == "option:path"]
+    save_calls = [value for key, value in operations if key == "saveAsTable"]
+
+    assert path_options == ["abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"]
+    assert save_calls == ["bronze.nyc311_service_requests_raw", "bronze.nyc311_service_requests_raw"]
