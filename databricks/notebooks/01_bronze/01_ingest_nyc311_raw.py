@@ -27,9 +27,22 @@ from src.common import databricks_runtime as runtime
 from src.common.utils import utc_now_iso
 from src.ingestion.api_extract import extract_service_requests
 from src.ingestion.bronze_loader import prepare_bronze_batch
-from src.ingestion.watermark import build_watermark_state, get_latest_watermark, read_delta_watermark_value
+from src.ingestion.watermark import build_watermark_state, get_latest_watermark
 
 runtime = importlib.reload(runtime)
+
+
+def read_current_watermark(path: str) -> str | None:
+    try:
+        watermark_df = spark.read.format("delta").load(path)  # type: ignore[name-defined]
+        rows = watermark_df.orderBy("updated_at", ascending=False).limit(1).collect()  # type: ignore[name-defined]
+    except Exception as exc:
+        message = str(exc)
+        if "PATH_NOT_FOUND" in message or "Path does not exist" in message:
+            return None
+        raise
+
+    return str(rows[0]["value"]) if rows else None
 
 
 config = runtime.bootstrap_notebook(
@@ -48,7 +61,7 @@ table_path = paths["table_paths"][BRONZE_TABLE]
 watermark_path = source_config["watermark_state_path"]
 
 watermark_override = runtime.get_widget(dbutils, "watermark_value", default="")  # type: ignore[name-defined]
-resolved_watermark = watermark_override or read_delta_watermark_value(spark, watermark_path)  # type: ignore[name-defined]
+resolved_watermark = watermark_override or read_current_watermark(watermark_path)
 api_pull_timestamp = utc_now_iso()
 
 records = extract_service_requests(
