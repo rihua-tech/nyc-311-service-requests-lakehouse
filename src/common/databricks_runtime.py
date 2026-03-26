@@ -37,6 +37,13 @@ def quote_identifier(identifier: str) -> str:
     return f"`{identifier.replace('`', '``')}`"
 
 
+def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
+    """Choose the single non-system catalog when the workspace exposes exactly one."""
+    excluded_catalogs = {"samples", "system", "hive_metastore", "spark_catalog"}
+    candidates = [catalog for catalog in available_catalogs if catalog not in excluded_catalogs]
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
     resolved = deepcopy(config)
     if not overrides:
@@ -210,6 +217,13 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
         available_catalogs = [str(row[0]) for row in spark.sql("SHOW CATALOGS").collect()]
     except Exception:
         available_catalogs = []
+
+    if not catalog:
+        inferred_catalog = infer_unambiguous_catalog(available_catalogs)
+        if inferred_catalog:
+            catalog = inferred_catalog
+            if isinstance(databricks, dict):
+                databricks["catalog"] = catalog
 
     if not catalog:
         visible_catalogs = ", ".join(sorted(available_catalogs)) if available_catalogs else "<none returned>"

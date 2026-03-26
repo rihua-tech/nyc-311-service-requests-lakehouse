@@ -54,6 +54,36 @@ def test_validate_catalog_access_raises_clear_error_for_missing_catalog() -> Non
         )
 
 
+def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> None:
+    class FakeSpark:
+        class _CatalogsResult:
+            def collect(self) -> list[tuple[str]]:
+                return [("dbw_nyc311_lakehouse_central",), ("samples",), ("system",)]
+
+        class _UseCatalogResult:
+            def collect(self) -> list[tuple[str]]:
+                return []
+
+        def sql(self, query: str) -> "FakeSpark._CatalogsResult | FakeSpark._UseCatalogResult":
+            if query == "SHOW CATALOGS":
+                return self._CatalogsResult()
+            if query == "USE CATALOG `dbw_nyc311_lakehouse_central`":
+                return self._UseCatalogResult()
+            raise AssertionError(f"Unexpected query: {query}")
+
+    config = {
+        "environment": "dev",
+        "databricks": {
+            "catalog": "",
+        },
+    }
+
+    resolved_catalog = validate_catalog_access(FakeSpark(), config)
+
+    assert resolved_catalog == "dbw_nyc311_lakehouse_central"
+    assert config["databricks"]["catalog"] == "dbw_nyc311_lakehouse_central"
+
+
 def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = {
         "configured_adls": False,
