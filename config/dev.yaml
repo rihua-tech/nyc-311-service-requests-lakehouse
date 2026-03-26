@@ -16,8 +16,7 @@ databricks:
   sp_client_id_key: "client-id"
   sp_client_secret_key: "client-secret"
   sp_tenant_id_key: "tenant-id"
-  # Manual step: set this to the real Unity Catalog catalog you can access in this workspace.
-  catalog: ""
+  catalog: "dbw_nyc311_lakehouse_central"
   bronze_schema: "bronze"
   silver_schema: "silver"
   gold_schema: "gold"
