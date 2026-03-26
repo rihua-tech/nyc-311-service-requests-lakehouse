@@ -24,6 +24,7 @@ from src.common.databricks_runtime import (
     get_widget,
     get_widget_int,
     resolve_runtime_config,
+    validate_catalog_access,
 )
 
 WIDGET_DEFAULTS = dict(BASE_WIDGET_DEFAULTS)
@@ -53,6 +54,11 @@ try:
         "secret_scope",
         default=config["databricks"]["secret_scope"],
     )
+    catalog = get_widget(  # type: ignore[name-defined]
+        dbutils,
+        "catalog",
+        default=config["databricks"].get("catalog", ""),
+    )
     client_id_key = get_widget(  # type: ignore[name-defined]
         dbutils,
         "sp_client_id_key",
@@ -73,6 +79,7 @@ try:
     print(f"Secret scope: {secret_scope}")
     print(f"Storage account: {config['azure']['storage_account']}")
     print(f"Filesystem: {config['azure']['container']}")
+    print(f"Configured catalog: {catalog or '<not set>'}")
     print(f"Bronze base path: {config['paths']['bronze_base_path']}")
     print(f"Silver base path: {config['paths']['silver_base_path']}")
     print(f"Gold base path: {config['paths']['gold_base_path']}")
@@ -89,5 +96,10 @@ try:
     dbutils.secrets.get(scope=secret_scope, key=client_secret_key)  # type: ignore[name-defined]
     dbutils.secrets.get(scope=secret_scope, key=tenant_id_key)  # type: ignore[name-defined]
     print("Secret lookups validated successfully.")
+
+    resolved_catalog = validate_catalog_access(spark, config)  # type: ignore[name-defined]
+    accessible_catalogs = [str(row[0]) for row in spark.sql("SHOW CATALOGS").collect()]  # type: ignore[name-defined]
+    print(f"Validated catalog: {resolved_catalog}")
+    print(f"Accessible catalogs in this session: {', '.join(sorted(accessible_catalogs))}")
 except NameError:
     print("This notebook is intended to run inside Databricks.")

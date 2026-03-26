@@ -51,6 +51,7 @@ try:
     print(f"Environment: {environment}")
     print(f"Storage account: {config['azure']['storage_account']}")
     print(f"Filesystem: {config['azure']['container']}")
+    print(f"Active catalog: {config['databricks']['catalog']}")
     print(f"Bronze base path: {paths['bronze_base_path']}")
     print(f"Silver base path: {paths['silver_base_path']}")
     print(f"Gold base path: {paths['gold_base_path']}")

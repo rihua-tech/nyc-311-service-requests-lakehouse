@@ -10,6 +10,7 @@ from src.common.constants import BRONZE_TABLE, GOLD_TABLES, SILVER_REFERENCE_TAB
 
 BASE_WIDGET_DEFAULTS = {
     "environment": "dev",
+    "catalog": "",
     "run_date": "",
     "secret_scope": "",
     "sp_client_id_key": "",
@@ -31,6 +32,11 @@ def _table_path(base_path: str, table_name: str) -> str:
     return f"{base_path.rstrip('/')}/{table_name.split('.')[-1]}"
 
 
+def quote_identifier(identifier: str) -> str:
+    """Safely quote a catalog, schema, or table identifier for Spark SQL."""
+    return f"`{identifier.replace('`', '``')}`"
+
+
 def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
     resolved = deepcopy(config)
     if not overrides:
@@ -47,6 +53,8 @@ def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any]
         resolved.setdefault("runtime", {})["run_date"] = overrides["run_date"]
     if overrides.get("secret_scope"):
         databricks["secret_scope"] = str(overrides["secret_scope"])
+    if overrides.get("catalog") is not None:
+        databricks["catalog"] = str(overrides["catalog"]).strip()
 
     return resolved
 
@@ -115,6 +123,7 @@ def resolve_runtime_config(
 
     azure["container"] = filesystem
     databricks.setdefault("secret_scope", "adls-sp")
+    databricks["catalog"] = str(databricks.get("catalog") or "").strip()
     paths.update(
         {
             "bronze_base_path": bronze_base_path,
@@ -190,19 +199,60 @@ def configure_adls_service_principal_access(
     )
 
 
+def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
+    """Validate that the configured Unity Catalog catalog exists and is accessible."""
+    databricks = config.get("databricks", {})
+    environment = str(config.get("environment", "<unknown>"))
+    catalog = str(databricks.get("catalog") or "").strip()
+
+    available_catalogs: list[str] = []
+    try:
+        available_catalogs = [str(row[0]) for row in spark.sql("SHOW CATALOGS").collect()]
+    except Exception:
+        available_catalogs = []
+
+    if not catalog:
+        visible_catalogs = ", ".join(sorted(available_catalogs)) if available_catalogs else "<none returned>"
+        raise ValueError(
+            "No Unity Catalog catalog is configured. Set databricks.catalog in "
+            f"config/{environment}.yaml or notebook widget 'catalog' to the catalog you can use for this workspace. "
+            f"Visible catalogs from this session: {visible_catalogs}"
+        )
+
+    if available_catalogs and catalog not in available_catalogs:
+        visible_catalogs = ", ".join(sorted(available_catalogs))
+        raise ValueError(
+            f"Configured databricks.catalog='{catalog}' is not visible to this workspace principal or cluster. "
+            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a Unity Catalog "
+            f"catalog you can actually USE in this workspace. Visible catalogs: {visible_catalogs}"
+        )
+
+    try:
+        spark.sql(f"USE CATALOG {quote_identifier(catalog)}")
+    except Exception as exc:
+        raise ValueError(
+            f"Configured databricks.catalog='{catalog}' could not be activated in this Unity Catalog workspace. "
+            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a catalog "
+            "that exists and is accessible to the current Databricks user/cluster."
+        ) from exc
+
+    return catalog
+
+
 def ensure_catalog_and_schemas(spark: Any, config: Mapping[str, Any]) -> None:
     """Set the active catalog and create the bronze, silver, and gold schemas."""
     databricks = config.get("databricks", {})
-    catalog = databricks.get("catalog")
-    if catalog:
-        spark.sql(f"USE CATALOG {catalog}")
+    catalog = validate_catalog_access(spark, config)
 
     for schema_name in (
         databricks.get("bronze_schema", "bronze"),
         databricks.get("silver_schema", "silver"),
         databricks.get("gold_schema", "gold"),
     ):
-        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+        if schema_name:
+            spark.sql(
+                f"CREATE SCHEMA IF NOT EXISTS {quote_identifier(catalog)}.{quote_identifier(str(schema_name))}"
+            )
 
 
 def write_delta_table(
@@ -235,6 +285,7 @@ def bootstrap_notebook(
 
     environment = get_widget(dbutils, "environment", default="dev")
     overrides = {
+        "catalog": get_widget(dbutils, "catalog", default=""),
         "run_date": get_widget(dbutils, "run_date", default=""),
         "secret_scope": get_widget(dbutils, "secret_scope", default=""),
         "page_size": get_widget_int(dbutils, "page_size"),
