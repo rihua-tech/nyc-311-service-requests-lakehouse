@@ -47,6 +47,23 @@ def _is_unavailable_storage_config_error(exc: Exception) -> bool:
     return "CONFIG_NOT_AVAILABLE" in message and "fs.azure.account.auth.type" in message
 
 
+def _normalize_path(path: str) -> str:
+    return path.rstrip("/")
+
+
+def _escape_sql_string(value: str) -> str:
+    return value.replace("'", "''")
+
+
+def _row_value(row: Any, key: str) -> Any:
+    if isinstance(row, Mapping):
+        return row[key]
+    try:
+        return row[key]
+    except Exception:
+        return getattr(row, key)
+
+
 def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
     """Choose the single non-system catalog when the workspace exposes exactly one."""
     excluded_catalogs = {"samples", "system", "hive_metastore", "spark_catalog"}
@@ -298,28 +315,32 @@ def write_delta_table(
     mode: str = "overwrite",
     partition_by: Sequence[str] | None = None,
 ) -> None:
-    """Persist a DataFrame to a Delta table, preferring explicit path and falling back to managed UC storage."""
+    """Persist Delta files to the configured path and ensure the UC table points to that same location."""
 
-    def build_writer(use_explicit_path: bool) -> Any:
+    def build_writer() -> Any:
         writer = dataframe.write.format("delta").mode(mode)
-        if use_explicit_path:
-            writer = writer.option("path", table_path)
         if partition_by:
             writer = writer.partitionBy(*partition_by)
         if mode == "overwrite":
             writer = writer.option("overwriteSchema", "true")
         return writer
 
-    try:
-        build_writer(use_explicit_path=True).saveAsTable(table_name)
-    except Exception as exc:
-        if not _is_missing_external_location_error(exc):
-            raise
-        print(
-            f"Unity Catalog external location is not configured for {table_path}; "
-            f"writing managed table {table_name} instead."
+    build_writer().save(table_path)
+
+    escaped_path = _escape_sql_string(table_path)
+    spark = dataframe.sparkSession
+    spark.sql(f"CREATE TABLE IF NOT EXISTS {table_name} USING DELTA LOCATION '{escaped_path}'")
+
+    detail_rows = spark.sql(f"DESCRIBE DETAIL {table_name}").collect()
+    if not detail_rows:
+        raise ValueError(f"Unable to validate the registered location for {table_name}.")
+
+    registered_location = str(_row_value(detail_rows[0], "location"))
+    if _normalize_path(registered_location) != _normalize_path(table_path):
+        raise ValueError(
+            f"{table_name} is registered at {registered_location}, expected {table_path}. "
+            "Drop and recreate the table registration or correct the configured table path."
         )
-        build_writer(use_explicit_path=False).saveAsTable(table_name)
 
 
 def bootstrap_notebook(

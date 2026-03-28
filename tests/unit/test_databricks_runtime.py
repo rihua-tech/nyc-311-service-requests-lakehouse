@@ -200,13 +200,10 @@ def test_bootstrap_notebook_can_skip_storage_configuration(monkeypatch: pytest.M
     assert config["environment"] == "dev"
 
 
-def test_write_delta_table_falls_back_to_managed_table_when_external_location_is_missing() -> None:
+def test_write_delta_table_writes_to_path_and_registers_matching_table() -> None:
     operations: list[tuple[str, object]] = []
 
     class FakeWriter:
-        def __init__(self, attempt: int) -> None:
-            self.attempt = attempt
-
         def format(self, value: str) -> "FakeWriter":
             operations.append(("format", value))
             return self
@@ -223,22 +220,32 @@ def test_write_delta_table_falls_back_to_managed_table_when_external_location_is
             operations.append(("partitionBy", values))
             return self
 
-        def saveAsTable(self, table_name: str) -> None:
-            operations.append(("saveAsTable", table_name))
-            if self.attempt == 1:
-                raise Exception(
-                    "[NO_PARENT_EXTERNAL_LOCATION_FOR_PATH] No parent external location was found for path "
-                    "'abfss://nyc311@account.dfs.core.windows.net/bronze/table'."
+        def save(self, path: str) -> None:
+            operations.append(("save", path))
+
+    class FakeSqlResult:
+        def __init__(self, rows: list[dict[str, str]]) -> None:
+            self._rows = rows
+
+        def collect(self) -> list[dict[str, str]]:
+            return self._rows
+
+    class FakeSpark:
+        def sql(self, query: str) -> FakeSqlResult:
+            operations.append(("sql", query))
+            if query.startswith("DESCRIBE DETAIL"):
+                return FakeSqlResult(
+                    [{"location": "abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"}]
                 )
+            return FakeSqlResult([])
 
     class FakeDataFrame:
         def __init__(self) -> None:
-            self.attempt = 0
+            self.sparkSession = FakeSpark()
 
         @property
         def write(self) -> FakeWriter:
-            self.attempt += 1
-            return FakeWriter(self.attempt)
+            return FakeWriter()
 
     write_delta_table(
         FakeDataFrame(),
@@ -247,11 +254,58 @@ def test_write_delta_table_falls_back_to_managed_table_when_external_location_is
         mode="overwrite",
     )
 
-    path_options = [value for key, value in operations if key == "option:path"]
-    save_calls = [value for key, value in operations if key == "saveAsTable"]
+    save_calls = [value for key, value in operations if key == "save"]
+    sql_calls = [value for key, value in operations if key == "sql"]
 
-    assert path_options == ["abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"]
-    assert save_calls == ["bronze.nyc311_service_requests_raw", "bronze.nyc311_service_requests_raw"]
+    assert save_calls == ["abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"]
+    assert sql_calls == [
+        "CREATE TABLE IF NOT EXISTS bronze.nyc311_service_requests_raw USING DELTA LOCATION 'abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw'",
+        "DESCRIBE DETAIL bronze.nyc311_service_requests_raw",
+    ]
+
+
+def test_write_delta_table_raises_when_registered_location_does_not_match() -> None:
+    class FakeWriter:
+        def format(self, value: str) -> "FakeWriter":
+            return self
+
+        def mode(self, value: str) -> "FakeWriter":
+            return self
+
+        def option(self, key: str, value: str) -> "FakeWriter":
+            return self
+
+        def save(self, path: str) -> None:
+            return None
+
+    class FakeSqlResult:
+        def __init__(self, rows: list[dict[str, str]]) -> None:
+            self._rows = rows
+
+        def collect(self) -> list[dict[str, str]]:
+            return self._rows
+
+    class FakeSpark:
+        def sql(self, query: str) -> FakeSqlResult:
+            if query.startswith("DESCRIBE DETAIL"):
+                return FakeSqlResult([{"location": "dbfs:/user/hive/warehouse/bronze.db/nyc311_service_requests_raw"}])
+            return FakeSqlResult([])
+
+    class FakeDataFrame:
+        def __init__(self) -> None:
+            self.sparkSession = FakeSpark()
+
+        @property
+        def write(self) -> FakeWriter:
+            return FakeWriter()
+
+    with pytest.raises(ValueError, match="expected abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"):
+        write_delta_table(
+            FakeDataFrame(),
+            "bronze.nyc311_service_requests_raw",
+            "abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw",
+            mode="overwrite",
+        )
 
 
 def test_configure_adls_service_principal_access_skips_unavailable_serverless_configs(
