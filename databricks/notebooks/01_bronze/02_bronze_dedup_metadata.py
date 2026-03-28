@@ -17,13 +17,17 @@
 # MAGIC 3. Persist curated bronze output.
 
 # COMMAND ----------
+import importlib
+
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
 from src.common.constants import BRONZE_TABLE
-from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
+from src.common import databricks_runtime as runtime
 
-config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+runtime = importlib.reload(runtime)
+
+config = runtime.bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
 table_path = config["paths"]["table_paths"][BRONZE_TABLE]
 
 if not spark.catalog.tableExists(BRONZE_TABLE):  # type: ignore[name-defined]
@@ -46,7 +50,7 @@ deduped_df = (
 )
 
 output_count = deduped_df.count()
-write_delta_table(deduped_df, BRONZE_TABLE, table_path, mode="overwrite")
+runtime.write_delta_table(deduped_df, BRONZE_TABLE, table_path, mode="overwrite")
 
 print(f"Bronze input row count: {input_count}")
 print(f"Bronze output row count: {output_count}")
