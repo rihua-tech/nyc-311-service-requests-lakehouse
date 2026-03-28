@@ -310,8 +310,9 @@ def bootstrap_notebook(
     dbutils: Any,
     extra_widget_defaults: Mapping[str, str] | None = None,
     ensure_catalog_schemas: bool = True,
+    configure_storage_access: bool = True,
 ) -> dict[str, Any]:
-    """Create widgets, resolve runtime config, configure ADLS, and ensure schemas."""
+    """Create widgets, resolve runtime config, optionally configure ADLS, and ensure schemas."""
     widget_defaults = dict(BASE_WIDGET_DEFAULTS)
     if extra_widget_defaults:
         widget_defaults.update(extra_widget_defaults)
@@ -330,19 +331,20 @@ def bootstrap_notebook(
     databricks = config["databricks"]
 
     spark.conf.set("spark.sql.session.timeZone", "UTC")
-    configure_adls_service_principal_access(
-        spark=spark,
-        dbutils=dbutils,
-        storage_account=config["azure"]["storage_account"],
-        secret_scope=get_widget(dbutils, "secret_scope", default=databricks["secret_scope"]),
-        client_id_key=get_widget(dbutils, "sp_client_id_key", default=databricks.get("sp_client_id_key", "")),
-        client_secret_key=get_widget(
-            dbutils,
-            "sp_client_secret_key",
-            default=databricks.get("sp_client_secret_key", ""),
-        ),
-        tenant_id_key=get_widget(dbutils, "sp_tenant_id_key", default=databricks.get("sp_tenant_id_key", "")),
-    )
+    if configure_storage_access:
+        configure_adls_service_principal_access(
+            spark=spark,
+            dbutils=dbutils,
+            storage_account=config["azure"]["storage_account"],
+            secret_scope=get_widget(dbutils, "secret_scope", default=databricks["secret_scope"]),
+            client_id_key=get_widget(dbutils, "sp_client_id_key", default=databricks.get("sp_client_id_key", "")),
+            client_secret_key=get_widget(
+                dbutils,
+                "sp_client_secret_key",
+                default=databricks.get("sp_client_secret_key", ""),
+            ),
+            tenant_id_key=get_widget(dbutils, "sp_tenant_id_key", default=databricks.get("sp_tenant_id_key", "")),
+        )
     if ensure_catalog_schemas:
         ensure_catalog_and_schemas(spark, config)
 

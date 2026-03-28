@@ -27,7 +27,11 @@ from src.common import databricks_runtime as runtime
 
 runtime = importlib.reload(runtime)
 
-config = runtime.bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+config = runtime.bootstrap_notebook(  # type: ignore[name-defined]
+    spark=spark,
+    dbutils=dbutils,
+    configure_storage_access=False,
+)
 table_path = config["paths"]["table_paths"][BRONZE_TABLE]
 
 if not spark.catalog.tableExists(BRONZE_TABLE):  # type: ignore[name-defined]

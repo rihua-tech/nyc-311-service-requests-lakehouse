@@ -139,6 +139,61 @@ def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPat
     assert config["environment"] == "dev"
 
 
+def test_bootstrap_notebook_can_skip_storage_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {
+        "configured_adls": False,
+        "ensured_catalog": False,
+    }
+
+    class FakeSparkConf:
+        def __init__(self) -> None:
+            self.settings: dict[str, str] = {}
+
+        def set(self, key: str, value: str) -> None:
+            self.settings[key] = value
+
+    class FakeSpark:
+        def __init__(self) -> None:
+            self.conf = FakeSparkConf()
+
+    class FakeWidgets:
+        def __init__(self) -> None:
+            self.values: dict[str, str] = {}
+
+        def get(self, name: str) -> str:
+            if name not in self.values:
+                raise KeyError(name)
+            return self.values[name]
+
+        def text(self, name: str, default: str) -> None:
+            self.values[name] = default
+
+    class FakeDbutils:
+        def __init__(self) -> None:
+            self.widgets = FakeWidgets()
+
+    def fake_configure_adls_service_principal_access(**_: object) -> None:
+        calls["configured_adls"] = True
+
+    def fake_ensure_catalog_and_schemas(*_: object, **__: object) -> None:
+        calls["ensured_catalog"] = True
+
+    monkeypatch.setattr(runtime, "configure_adls_service_principal_access", fake_configure_adls_service_principal_access)
+    monkeypatch.setattr(runtime, "ensure_catalog_and_schemas", fake_ensure_catalog_and_schemas)
+
+    spark = FakeSpark()
+    config = runtime.bootstrap_notebook(
+        spark=spark,
+        dbutils=FakeDbutils(),
+        configure_storage_access=False,
+    )
+
+    assert calls["configured_adls"] is False
+    assert calls["ensured_catalog"] is True
+    assert spark.conf.settings["spark.sql.session.timeZone"] == "UTC"
+    assert config["environment"] == "dev"
+
+
 def test_write_delta_table_falls_back_to_managed_table_when_external_location_is_missing() -> None:
     operations: list[tuple[str, object]] = []
 
