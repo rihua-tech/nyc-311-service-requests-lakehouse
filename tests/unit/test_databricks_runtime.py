@@ -2,7 +2,13 @@ from src.common.constants import BRONZE_TABLE, GOLD_TABLES, SILVER_REFERENCE_TAB
 import pytest
 
 from src.common import databricks_runtime as runtime
-from src.common.databricks_runtime import build_abfss_uri, resolve_runtime_config, validate_catalog_access, write_delta_table
+from src.common.databricks_runtime import (
+    build_abfss_uri,
+    configure_adls_service_principal_access,
+    resolve_runtime_config,
+    validate_catalog_access,
+    write_delta_table,
+)
 
 
 def test_build_abfss_uri_joins_parts_cleanly() -> None:
@@ -246,3 +252,38 @@ def test_write_delta_table_falls_back_to_managed_table_when_external_location_is
 
     assert path_options == ["abfss://nyc311@account.dfs.core.windows.net/bronze/nyc311_service_requests_raw"]
     assert save_calls == ["bronze.nyc311_service_requests_raw", "bronze.nyc311_service_requests_raw"]
+
+
+def test_configure_adls_service_principal_access_skips_unavailable_serverless_configs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class FakeSparkConf:
+        def set(self, key: str, value: str) -> None:
+            raise Exception(
+                "[CONFIG_NOT_AVAILABLE] Configuration "
+                f"{key} is not available."
+            )
+
+    class FakeSpark:
+        def __init__(self) -> None:
+            self.conf = FakeSparkConf()
+
+    class FakeSecrets:
+        def get(self, scope: str, key: str) -> str:
+            raise AssertionError(f"Secrets should not be requested when Spark config is unavailable: {scope}/{key}")
+
+    class FakeDbutils:
+        def __init__(self) -> None:
+            self.secrets = FakeSecrets()
+
+    configure_adls_service_principal_access(
+        spark=FakeSpark(),
+        dbutils=FakeDbutils(),
+        storage_account="nyc311adlsg22026",
+        secret_scope="adls-sp",
+        client_id_key="client-id",
+        client_secret_key="client-secret",
+        tenant_id_key="tenant-id",
+    )
+
+    assert "continuing with workspace-managed access" in capsys.readouterr().out

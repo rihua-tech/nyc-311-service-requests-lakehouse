@@ -42,6 +42,11 @@ def _is_missing_external_location_error(exc: Exception) -> bool:
     return "NO_PARENT_EXTERNAL_LOCATION_FOR_PATH" in message or "external location" in message.lower()
 
 
+def _is_unavailable_storage_config_error(exc: Exception) -> bool:
+    message = str(exc)
+    return "CONFIG_NOT_AVAILABLE" in message and "fs.azure.account.auth.type" in message
+
+
 def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
     """Choose the single non-system catalog when the workspace exposes exactly one."""
     excluded_catalogs = {"samples", "system", "hive_metastore", "spark_catalog"}
@@ -193,12 +198,24 @@ def configure_adls_service_principal_access(
             "before running the setup or processing notebooks."
         )
 
+    account_fqdn = f"{storage_account}.dfs.core.windows.net"
+    try:
+        spark.conf.set(f"fs.azure.account.auth.type.{account_fqdn}", "OAuth")
+    except Exception as exc:
+        if not _is_unavailable_storage_config_error(exc):
+            raise
+        # Serverless / Spark Connect can block direct fs.azure Spark configs. In that case
+        # the notebooks rely on Unity Catalog + external locations instead of manual ABFS auth.
+        print(
+            f"Spark storage config is not available for {account_fqdn}; "
+            "continuing with workspace-managed access."
+        )
+        return
+
     client_id = dbutils.secrets.get(scope=secret_scope, key=client_id_key)
     client_secret = dbutils.secrets.get(scope=secret_scope, key=client_secret_key)
     tenant_id = dbutils.secrets.get(scope=secret_scope, key=tenant_id_key)
 
-    account_fqdn = f"{storage_account}.dfs.core.windows.net"
-    spark.conf.set(f"fs.azure.account.auth.type.{account_fqdn}", "OAuth")
     spark.conf.set(
         f"fs.azure.account.oauth.provider.type.{account_fqdn}",
         "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider",
