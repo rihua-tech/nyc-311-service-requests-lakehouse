@@ -17,31 +17,49 @@
 # MAGIC 3. Write the dimension.
 
 # COMMAND ----------
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES, SILVER_REFERENCE_TABLES
-from src.transformation.gold_dimensions import build_dim_location
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['dim_location']} from {SILVER_REFERENCE_TABLES['location']}")
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+source_table = SILVER_REFERENCE_TABLES["location"]
+target_table = GOLD_TABLES["dim_location"]
 
-sample_location_reference_rows = [
-    {
-        "incident_zip": "11201",
-        "borough": "BROOKLYN",
-        "city": "BROOKLYN",
-        "location_type": "Residential Building",
-        "latitude": 40.6931,
-        "longitude": -73.9897,
-    },
-    {
-        "incident_zip": "11101",
-        "borough": "QUEENS",
-        "city": "LONG ISLAND CITY",
-        "location_type": "Street",
-        "latitude": 40.7447,
-        "longitude": -73.9485,
-    },
-]
-dim_location_rows = build_dim_location(sample_location_reference_rows)
+location_df = (
+    spark.table(source_table)  # type: ignore[name-defined]
+    .orderBy(
+        F.col("incident_zip").asc_nulls_last(),
+        F.col("borough").asc_nulls_last(),
+        F.col("city").asc_nulls_last(),
+        F.col("location_type").asc_nulls_last(),
+    )
+    .withColumn(
+        "location_sk",
+        F.row_number().over(
+            Window.orderBy(
+                F.col("incident_zip").asc_nulls_last(),
+                F.col("borough").asc_nulls_last(),
+                F.col("city").asc_nulls_last(),
+                F.col("location_type").asc_nulls_last(),
+            )
+        ),
+    )
+    .withColumn("effective_timestamp", F.current_timestamp())
+    .select(
+        "location_sk",
+        "incident_zip",
+        "borough",
+        "city",
+        "location_type",
+        "latitude",
+        "longitude",
+        "effective_timestamp",
+    )
+)
 
-print(f"Prepared {len(dim_location_rows)} dim_location rows")
+write_delta_table(location_df, target_table, config["paths"]["table_paths"][target_table], mode="overwrite")
 
-# TODO: Decide whether geospatial enrichment belongs in silver or gold.
+print(f"Published {target_table}")
+print(f"dim_location row count: {location_df.count()}")

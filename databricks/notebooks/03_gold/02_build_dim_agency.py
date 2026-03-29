@@ -17,25 +17,25 @@
 # MAGIC 3. Persist the dimension.
 
 # COMMAND ----------
+from pyspark.sql import Window
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES, SILVER_REFERENCE_TABLES
-from src.transformation.gold_dimensions import build_dim_agency
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['dim_agency']} from {SILVER_REFERENCE_TABLES['agency']}")
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+source_table = SILVER_REFERENCE_TABLES["agency"]
+target_table = GOLD_TABLES["dim_agency"]
 
-sample_agency_reference_rows = [
-    {
-        "agency_code": "DEP",
-        "agency_name": "Department of Environmental Protection",
-        "first_seen_created_date": "2024-01-02",
-    },
-    {
-        "agency_code": "DSNY",
-        "agency_name": "Department of Sanitation",
-        "first_seen_created_date": "2024-01-01",
-    },
-]
-dim_agency_rows = build_dim_agency(sample_agency_reference_rows)
+agency_df = (
+    spark.table(source_table)  # type: ignore[name-defined]
+    .orderBy(F.col("agency_code").asc_nulls_last())
+    .withColumn("agency_sk", F.row_number().over(Window.orderBy(F.col("agency_code").asc_nulls_last())))
+    .withColumn("effective_timestamp", F.current_timestamp())
+    .select("agency_sk", "agency_code", "agency_name", "first_seen_created_date", "effective_timestamp")
+)
 
-print(f"Prepared {len(dim_agency_rows)} dim_agency rows")
+write_delta_table(agency_df, target_table, config["paths"]["table_paths"][target_table], mode="overwrite")
 
-# TODO: Confirm whether agency history requires slowly changing logic.
+print(f"Published {target_table}")
+print(f"dim_agency row count: {agency_df.count()}")

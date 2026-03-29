@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from src.common.utils import utc_now_iso
 
@@ -24,6 +24,24 @@ def read_watermark_state(path: str | Path) -> dict[str, str | None]:
         "value": payload.get("value"),
         "updated_at": payload.get("updated_at"),
     }
+
+
+def _is_missing_path_error(exc: Exception) -> bool:
+    message = str(exc)
+    return "PATH_NOT_FOUND" in message or "Path does not exist" in message
+
+
+def read_delta_watermark_value(spark: Any, path: str) -> str | None:
+    """Read the latest watermark value from a Delta path, or return None on first run."""
+    try:
+        watermark_df = spark.read.format("delta").load(path)
+        rows = watermark_df.orderBy("updated_at", ascending=False).limit(1).collect()
+    except Exception as exc:
+        if _is_missing_path_error(exc):
+            return None
+        raise
+
+    return str(rows[0]["value"]) if rows else None
 
 
 def get_latest_watermark(values: Iterable[str | None]) -> str | None:

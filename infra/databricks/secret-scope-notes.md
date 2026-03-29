@@ -1,59 +1,49 @@
 # Secret Scope Notes
 
-Use this document to track how secrets and runtime configuration should be exposed once the Databricks scaffold moves beyond local placeholders. This repo does not store live secret values, workspace tokens, or deployed scope bindings.
+This document describes the current Milestone 9 secret-handling pattern used by the manual Databricks cloud run. It documents secret names and lookup behavior, not secret values.
 
-## Suggested Scope Pattern
+## Current Expected Secret Scope Pattern
 
-- Preferred for Azure deployments: Azure Key Vault-backed scope such as `kv-nyc311-<env>`
-- Acceptable placeholder pattern for early testing: Databricks secret scope such as `nyc311-<env>`
-- Keep secret names stable across environments and swap the backing scope or vault per environment
+- current dev setup expects a Databricks secret scope named `adls-sp`
+- current dev setup expects these secret keys:
+  - `client-id`
+  - `client-secret`
+  - `tenant-id`
+- the backing store for the scope is not committed to this repo
 
-## Secrets That May Be Needed
+## How The Repo Uses Those Secrets
 
-### Storage Authentication
+- `databricks/notebooks/00_setup/01_secrets_and_widgets.py` reads widget values for `secret_scope`, `sp_client_id_key`, `sp_client_secret_key`, and `sp_tenant_id_key`
+- the setup notebook validates that those secret names can be resolved with `dbutils.secrets.get` without printing any secret values
+- `src/common/databricks_runtime.py` uses the retrieved values to configure OAuth-based ADLS access when manual Spark storage configuration is required
+- if the Databricks environment already exposes storage through workspace-managed access or external locations, the runtime can continue without hardcoded credentials
 
-Use these only if the workspace is not already using managed identity, Unity Catalog external locations, or another storage abstraction that removes the need for notebook-level secrets.
+## Non-Secret Runtime Inputs
 
-- `adls-client-id`
-- `adls-client-secret`
-- `adls-tenant-id`
-
-### Source Access
-
-- `nyc311-api-token`
-
-The NYC 311 API can often be queried anonymously, but an app token is a believable production placeholder for rate-limit resilience and operational consistency.
-
-### Optional Operational Integrations
-
-- `alert-webhook-url`
-- `job-notification-email`
-
-## Non-Secret Runtime Configuration
-
-These values are configuration, not secrets, and should be passed through job parameters, widgets, or environment-specific config files instead of a secret scope.
+These values are configuration, not secrets:
 
 - `environment`
 - `run_date`
 - `catalog`
+- `page_size`
+- `max_pages_per_run`
+- `snapshot_date`
 - `bronze_schema`
 - `silver_schema`
 - `gold_schema`
-- `raw_landing_path`
-- `checkpoint_path`
 - `storage_account`
-- `raw_container`
-- `curated_container`
+- `container`
 
-## Intended Usage In This Repo
+## Optional Future Secrets
 
-- `databricks/notebooks/00_setup/01_secrets_and_widgets.py` is the natural place to centralize widget setup and secret retrieval once the notebooks move beyond scaffold status.
-- Bronze ingestion would use runtime path settings and may optionally use `nyc311-api-token` if the chosen API access pattern requires it.
-- Storage credentials should never be hardcoded in notebooks, workflow JSON, or checked-in config files.
+- `nyc311-api-token`
+- `alert-webhook-url`
+- `job-notification-email`
 
-## TODO
+The current Milestone 9 run does not require those extras to prove the manual Databricks-to-ADLS path.
 
-- decide between managed identity or Unity Catalog access versus service-principal-based storage access
-- document the exact secret lookups once notebook parameters and cluster policies are finalized
-- keep environment names, vault names, and scope names aligned with the Azure naming pattern used elsewhere in `infra/`
-- avoid hardcoding any values in source control
+## Honest Status
+
+- the secret lookup flow is real in the Databricks setup notebooks
+- this repo does not contain live secret values, workspace tokens, or a production Key Vault deployment definition
+- a more mature deployment may switch to Key Vault-backed scopes, managed identity, or Unity Catalog external-location access without changing the public repo documentation style

@@ -6,8 +6,8 @@
     "enabled": true
   },
   "manual_prerequisites": [
-    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/00_mounts_and_paths",
-    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/01_secrets_and_widgets"
+    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/01_secrets_and_widgets",
+    "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/00_setup/00_mounts_and_paths"
   ],
   "job_clusters": [
     {
@@ -22,7 +22,7 @@
     "bronze_schema": "bronze",
     "silver_schema": "silver",
     "gold_schema": "gold",
-    "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/",
+    "raw_landing_path": "<future-raw-landing-path>",
     "checkpoint_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/"
   },
   "execution_stages": [
@@ -281,5 +281,5 @@
       "timeout_seconds": 1200
     }
   ],
-  "notes": "Placeholder Databricks workflow definition for sequencing and readability only. It documents the intended notebook order and shared job-cluster reuse, but it does not represent a deployed Databricks job."
+  "notes": "Draft Databricks workflow definition based on the Milestone 9 notebook order that was validated through manual execution. It is not a deployed job, and some shared parameters still reflect the future ADF-led orchestration shape rather than the current manual Databricks-to-ADLS run."
 }

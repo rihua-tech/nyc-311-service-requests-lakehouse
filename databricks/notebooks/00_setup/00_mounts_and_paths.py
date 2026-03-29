@@ -19,12 +19,48 @@
 # MAGIC 4. Persist shared path variables for downstream notebooks.
 
 # COMMAND ----------
+import importlib
+from datetime import datetime, timezone
+
+from src.common import databricks_runtime as runtime
+
+runtime = importlib.reload(runtime)
+
 try:
-    environment = dbutils.widgets.get("environment")  # type: ignore[name-defined]
+    config = runtime.bootstrap_notebook(
+        spark=spark,  # type: ignore[name-defined]
+        dbutils=dbutils,  # type: ignore[name-defined]
+        extra_widget_defaults={
+            "page_size": "",
+            "max_pages_per_run": "",
+        },
+        ensure_catalog_schemas=False,
+    )
+    environment = config["environment"]
+    paths = config["paths"]
+
+    smoke_test_path = f"{paths['checkpoint_base_path'].rstrip('/')}/_setup_storage_smoke_test"
+    smoke_test_rows = [
+        {
+            "validated_at": datetime.now(timezone.utc).isoformat(),
+            "environment": environment,
+            "storage_account": config["azure"]["storage_account"],
+            "filesystem": config["azure"]["container"],
+        }
+    ]
+
+    spark.createDataFrame(smoke_test_rows).write.mode("overwrite").json(smoke_test_path)  # type: ignore[name-defined]
+    smoke_test_count = spark.read.json(smoke_test_path).count()  # type: ignore[name-defined]
+
+    print(f"Environment: {environment}")
+    print(f"Storage account: {config['azure']['storage_account']}")
+    print(f"Filesystem: {config['azure']['container']}")
+    print(f"Active catalog: {config['databricks']['catalog']}")
+    print(f"Bronze base path: {paths['bronze_base_path']}")
+    print(f"Silver base path: {paths['silver_base_path']}")
+    print(f"Gold base path: {paths['gold_base_path']}")
+    print(f"Checkpoint base path: {paths['checkpoint_base_path']}")
+    print(f"Watermark path: {config['source']['watermark_state_path']}")
+    print(f"ADLS smoke-test row count: {smoke_test_count}")
 except NameError:
-    environment = "dev"
-
-print(f"Scaffold notebook for storage setup: {environment}")
-
-# TODO: Replace with real Databricks mount or ABFSS path initialization.
-
+    print("This notebook is intended to run inside Databricks.")

@@ -13,7 +13,8 @@ adf:
 
 databricks:
   workspace_url: "https://<your-databricks-workspace>"
-  catalog: "main"
+  # Manual step: set this to the real Unity Catalog catalog for the target workspace.
+  catalog: ""
   bronze_schema: "bronze"
   silver_schema: "silver"
   gold_schema: "gold"
@@ -23,4 +24,3 @@ source:
   base_url: "https://data.cityofnewyork.us/resource/<dataset-id>.json"
   page_size: 5000
   watermark_column: "created_date"
-

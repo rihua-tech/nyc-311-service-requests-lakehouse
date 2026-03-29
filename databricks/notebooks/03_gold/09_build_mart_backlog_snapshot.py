@@ -18,32 +18,42 @@
 # MAGIC 4. Write the snapshot mart.
 
 # COMMAND ----------
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES
-from src.transformation.gold_marts import build_backlog_snapshot
+from src.common.databricks_runtime import bootstrap_notebook, get_widget, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['mart_backlog_snapshot']}")
+config = bootstrap_notebook(
+    spark=spark,  # type: ignore[name-defined]
+    dbutils=dbutils,  # type: ignore[name-defined]
+    extra_widget_defaults={"snapshot_date": ""},
+)
+target_table = GOLD_TABLES["mart_backlog_snapshot"]
+snapshot_date = get_widget(dbutils, "snapshot_date", default="")  # type: ignore[name-defined]
 
-sample_fact_rows = [
-    {
-        "request_id": "1001",
-        "created_date": "2024-01-01",
-        "closed_date": None,
-        "agency_code": "DEP",
-        "status_name": "Open",
-        "is_closed": False,
-    },
-    {
-        "request_id": "1002",
-        "created_date": "2024-01-01",
-        "closed_date": "2024-01-02",
-        "agency_code": "DSNY",
-        "status_name": "Closed",
-        "is_closed": True,
-    },
-]
-mart_rows = build_backlog_snapshot(sample_fact_rows, snapshot_date="2024-01-01")
+fact_df = spark.table(GOLD_TABLES["fact_service_requests"])  # type: ignore[name-defined]
+snapshot_expr = F.to_date(F.lit(snapshot_date)) if snapshot_date else F.current_date()
+open_df = fact_df.filter(
+    (F.col("created_date") <= snapshot_expr)
+    & (
+        (~F.col("is_closed"))
+        | (F.col("is_closed") & F.col("closed_date").isNotNull() & (F.col("closed_date") > snapshot_expr))
+    )
+)
+mart_df = (
+    open_df.groupBy("status_name", "agency_code")
+    .agg(F.count("*").alias("open_request_count"))
+    .withColumn("snapshot_date", snapshot_expr)
+    .select("snapshot_date", "status_name", "agency_code", "open_request_count")
+)
 
-print(f"Prepared {len(mart_rows)} mart_backlog_snapshot rows")
+write_delta_table(
+    mart_df,
+    target_table,
+    config["paths"]["table_paths"][target_table],
+    mode="overwrite",
+)
 
-# TODO: Replace sample rows with a Spark read from `gold.fact_service_requests`.
-# TODO: Decide whether snapshot dates should come from a job parameter, schedule date, or control table.
+print(f"Published {target_table}")
+print(f"Snapshot date: {snapshot_date or '<current_date>'}")
+print(f"mart_backlog_snapshot row count: {mart_df.count()}")

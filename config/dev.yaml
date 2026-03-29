@@ -1,23 +1,26 @@
 environment: dev
 
 azure:
-  subscription_id: "<your-subscription-id>"
-  resource_group: "rg-nyc311-dev"
-  storage_account: "<your-storage-account>"
-  raw_container: "raw"
-  curated_container: "curated"
+  subscription_id: "d90acc1e-c7cd-4112-aeef-49a8b753500f"
+  resource_group: "rg-nyc311-lakehouse"
+  storage_account: "nyc311adlsg22026"
+  container: "nyc311"
 
 adf:
   factory_name: "adf-nyc311-dev"
   pipeline_name: "pl_nyc311_ingest"
 
 databricks:
-  workspace_url: "https://<your-databricks-workspace>"
-  catalog: "main"
+  workspace_url: "https://adb-7405617768679867.7.azuredatabricks.net"
+  secret_scope: "adls-sp"
+  sp_client_id_key: "client-id"
+  sp_client_secret_key: "client-secret"
+  sp_tenant_id_key: "tenant-id"
+  catalog: "dbw_nyc311_lakehouse_central"
   bronze_schema: "bronze"
   silver_schema: "silver"
   gold_schema: "gold"
-  cluster_id: "<your-cluster-id>"
+
 
 source:
   system_name: "nyc_311_api"
@@ -27,9 +30,16 @@ source:
   timeout_seconds: 30
   order_by: "created_date ASC"
   watermark_field: "created_date"
-  watermark_state_path: "local_state/dev_nyc311_watermark.json"
+  watermark_state_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state"
+
+paths:
+  bronze_base_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze"
+  silver_base_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/silver"
+  gold_base_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/gold"
+  checkpoint_base_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/checkpoints"
+  bronze_raw_batch_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/nyc311_service_requests_raw/raw_batches"
 
 bronze:
-  raw_landing_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/"
-  checkpoint_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/"
+  raw_landing_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/nyc311_service_requests_raw/raw_batches"
+  checkpoint_path: "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/checkpoints"
   table_name: "bronze.nyc311_service_requests_raw"

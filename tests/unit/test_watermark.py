@@ -3,6 +3,7 @@ from pathlib import Path
 from src.ingestion.watermark import (
     build_watermark_state,
     get_latest_watermark,
+    read_delta_watermark_value,
     read_watermark_state,
     write_watermark_state,
 )
@@ -37,3 +38,52 @@ def test_build_watermark_state_and_get_latest_watermark_are_simple() -> None:
     assert state["column_name"] == "created_date"
     assert get_latest_watermark(["2024-01-01", None, "2024-01-05"]) == "2024-01-05"
 
+
+def test_read_delta_watermark_value_returns_none_when_path_is_missing() -> None:
+    class FakeDataFrame:
+        def orderBy(self, *_: object, **__: object) -> "FakeDataFrame":
+            return self
+
+        def limit(self, _: int) -> "FakeDataFrame":
+            return self
+
+        def collect(self) -> list[dict[str, str]]:
+            raise Exception("[PATH_NOT_FOUND] Path does not exist: abfss://container@account/path")
+
+    class FakeReader:
+        def format(self, _: str) -> "FakeReader":
+            return self
+
+        def load(self, _: str) -> FakeDataFrame:
+            return FakeDataFrame()
+
+    class FakeSpark:
+        def __init__(self) -> None:
+            self.read = FakeReader()
+
+    assert read_delta_watermark_value(FakeSpark(), "abfss://container@account/path") is None
+
+
+def test_read_delta_watermark_value_returns_latest_value() -> None:
+    class FakeDataFrame:
+        def orderBy(self, *_: object, **__: object) -> "FakeDataFrame":
+            return self
+
+        def limit(self, _: int) -> "FakeDataFrame":
+            return self
+
+        def collect(self) -> list[dict[str, str]]:
+            return [{"value": "2024-01-05T00:00:00"}]
+
+    class FakeReader:
+        def format(self, _: str) -> "FakeReader":
+            return self
+
+        def load(self, _: str) -> FakeDataFrame:
+            return FakeDataFrame()
+
+    class FakeSpark:
+        def __init__(self) -> None:
+            self.read = FakeReader()
+
+    assert read_delta_watermark_value(FakeSpark(), "abfss://container@account/path") == "2024-01-05T00:00:00"

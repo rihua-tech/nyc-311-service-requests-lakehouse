@@ -5,10 +5,11 @@
 - Table: `bronze.nyc311_service_requests_raw`
 - Grain: one ingested source record per load event
 - Current implementation:
-  - intended Azure landing path is `abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=YYYY-MM-DD/`
-  - raw JSON payload stored in `raw_payload`
-  - ingest metadata such as `ingest_id`, `source_record_id`, `api_pull_timestamp`, `record_hash`, and `file_path`
-  - local helper logic for bronze record preparation and batch path generation
+  - the Milestone 9 manual cloud run writes the bronze Delta table under `abfss://nyc311@<your-storage-account>.dfs.core.windows.net/bronze/nyc311_service_requests_raw/`
+  - raw JSON payload is stored in `raw_payload`
+  - ingest metadata includes `ingest_id`, `source_record_id`, `api_pull_timestamp`, `record_hash`, and `file_path`
+  - watermark state is stored under `bronze/checkpoints/nyc311_service_requests/watermark_state/`
+  - `file_path` records a lineage-style `raw_batches` path pattern even though the current run does not materialize a separate pre-bronze raw JSON landing zone
 
 ## Silver
 
@@ -21,7 +22,7 @@
   - derives `created_year`, `created_month`, `created_date`, `closed_date`
   - derives `is_closed`, `is_overdue`, and `resolution_time_hours`
   - removes duplicate `request_id` values
-  - is intended to be materialized by Databricks after the bronze landing and bronze metadata steps succeed
+  - is materialized by the Databricks silver notebooks during the current manual cloud run
 - Supporting tables:
   - `silver.agency_reference`
   - `silver.complaint_type_reference`
@@ -48,11 +49,11 @@ Current implementation:
 - gold dimensions are built with starter surrogate-key logic based on stable sorting of business keys
 - `gold.fact_service_requests` resolves surrogate keys while retaining selected business columns for readability and downstream compatibility
 - gold marts are implemented as fact-based aggregations for request volume, service performance, and backlog snapshots
-- gold processing is intended to run after silver quality steps and before the separate validation stage
+- gold processing runs after the silver quality step and before the separate validation stage in the current manual Databricks flow
 
 ## Design Notes
 
-- this is still a starter implementation, not a production warehouse
+- this is a working starter implementation, not a production warehouse
 - the current surrogate-key pattern is intentionally simple and documented in code
 - slowly changing dimensions are not implemented
 - historical status tracking is not implemented, so backlog snapshot logic is a pragmatic current-state approximation

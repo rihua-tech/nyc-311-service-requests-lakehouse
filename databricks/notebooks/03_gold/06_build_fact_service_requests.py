@@ -22,58 +22,71 @@
 # MAGIC 4. Write the fact table.
 
 # COMMAND ----------
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES, SILVER_TABLE
-from src.transformation.gold_dimensions import (
-    build_dim_agency,
-    build_dim_complaint_type,
-    build_dim_location,
-    build_dim_status,
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
+
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+target_table = GOLD_TABLES["fact_service_requests"]
+target_path = config["paths"]["table_paths"][target_table]
+
+silver_df = spark.table(SILVER_TABLE).alias("silver")  # type: ignore[name-defined]
+agency_df = spark.table(GOLD_TABLES["dim_agency"]).select("agency_code", "agency_sk").alias("agency")  # type: ignore[name-defined]
+complaint_df = spark.table(GOLD_TABLES["dim_complaint_type"]).select(  # type: ignore[name-defined]
+    "complaint_type",
+    "descriptor",
+    "complaint_type_sk",
+).alias("complaint")
+location_df = spark.table(GOLD_TABLES["dim_location"]).select(  # type: ignore[name-defined]
+    "incident_zip",
+    "borough",
+    "city",
+    "location_type",
+    "location_sk",
+).alias("location")
+status_df = spark.table(GOLD_TABLES["dim_status"]).select("status_name", "status_sk").alias("status")  # type: ignore[name-defined]
+
+fact_df = (
+    silver_df.join(agency_df, on="agency_code", how="left")
+    .join(complaint_df, on=["complaint_type", "descriptor"], how="left")
+    .join(location_df, on=["incident_zip", "borough", "city", "location_type"], how="left")
+    .join(status_df, on="status_name", how="left")
+    .select(
+        F.col("request_id"),
+        F.when(F.col("created_date").isNull(), F.lit(None)).otherwise(
+            F.date_format(F.col("created_date"), "yyyyMMdd").cast("int")
+        ).alias("created_date_key"),
+        F.when(F.col("closed_date").isNull(), F.lit(None)).otherwise(
+            F.date_format(F.col("closed_date"), "yyyyMMdd").cast("int")
+        ).alias("closed_date_key"),
+        F.coalesce(F.col("agency_sk"), F.lit(0)).cast("int").alias("agency_sk"),
+        F.coalesce(F.col("complaint_type_sk"), F.lit(0)).cast("int").alias("complaint_type_sk"),
+        F.coalesce(F.col("location_sk"), F.lit(0)).cast("int").alias("location_sk"),
+        F.coalesce(F.col("status_sk"), F.lit(0)).cast("int").alias("status_sk"),
+        F.col("created_at"),
+        F.col("closed_at"),
+        F.col("due_date"),
+        F.col("created_date"),
+        F.col("closed_date"),
+        F.col("agency_code"),
+        F.col("complaint_type"),
+        F.col("descriptor"),
+        F.col("status_name"),
+        F.col("incident_zip"),
+        F.col("borough"),
+        F.col("city"),
+        F.col("location_type"),
+        F.col("channel_type"),
+        F.col("resolution_time_hours"),
+        F.col("is_closed"),
+        F.col("is_overdue"),
+        F.col("record_hash"),
+        F.col("load_timestamp"),
+    )
 )
-from src.transformation.gold_facts import build_fact_service_requests
 
-print(f"Scaffold notebook: build {GOLD_TABLES['fact_service_requests']} from {SILVER_TABLE}")
+write_delta_table(fact_df, target_table, target_path, mode="overwrite")
 
-sample_silver_rows = [
-    {
-        "request_id": "1001",
-        "created_at": "2024-01-01T10:00:00+00:00",
-        "closed_at": "2024-01-01T12:00:00+00:00",
-        "due_date": "2024-01-01T18:00:00+00:00",
-        "created_date": "2024-01-01",
-        "closed_date": "2024-01-01",
-        "agency_code": "DSNY",
-        "agency_name": "Department of Sanitation",
-        "complaint_type": "Missed Collection",
-        "descriptor": "Collection missed",
-        "status_name": "Closed",
-        "incident_zip": "11201",
-        "borough": "BROOKLYN",
-        "city": "BROOKLYN",
-        "location_type": "Residential Building",
-        "latitude": 40.6931,
-        "longitude": -73.9897,
-        "channel_type": "Phone",
-        "resolution_time_hours": 2.0,
-        "is_closed": True,
-        "is_overdue": False,
-        "record_hash": "sample-hash",
-        "load_timestamp": "2024-01-01T13:00:00+00:00",
-    }
-]
-
-dim_agency_rows = build_dim_agency(sample_silver_rows)
-dim_complaint_type_rows = build_dim_complaint_type(sample_silver_rows)
-dim_location_rows = build_dim_location(sample_silver_rows)
-dim_status_rows = build_dim_status(sample_silver_rows)
-fact_rows = build_fact_service_requests(
-    sample_silver_rows,
-    dim_agency_rows=dim_agency_rows,
-    dim_complaint_type_rows=dim_complaint_type_rows,
-    dim_location_rows=dim_location_rows,
-    dim_status_rows=dim_status_rows,
-)
-
-print(f"Prepared {len(fact_rows)} fact_service_requests rows")
-
-# TODO: Replace sample rows with Spark DataFrame reads from silver and gold Delta tables.
-# TODO: Translate the lookup helpers into explicit DataFrame joins in Databricks.
+print(f"Published {target_table} at {target_path}")
+print(f"Fact row count: {fact_df.count()}")

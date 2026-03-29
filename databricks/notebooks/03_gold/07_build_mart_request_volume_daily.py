@@ -17,19 +17,23 @@
 # MAGIC 3. Write the daily volume mart.
 
 # COMMAND ----------
+from pyspark.sql import functions as F
+
 from src.common.constants import GOLD_TABLES
-from src.transformation.gold_marts import build_request_volume_daily
+from src.common.databricks_runtime import bootstrap_notebook, write_delta_table
 
-print(f"Scaffold notebook: build {GOLD_TABLES['mart_request_volume_daily']}")
+config = bootstrap_notebook(spark=spark, dbutils=dbutils)  # type: ignore[name-defined]
+target_table = GOLD_TABLES["mart_request_volume_daily"]
 
-sample_fact_rows = [
-    {"request_id": "1001", "created_date": "2024-01-01"},
-    {"request_id": "1002", "created_date": "2024-01-01"},
-    {"request_id": "1003", "created_date": "2024-01-02"},
-]
-mart_rows = build_request_volume_daily(sample_fact_rows)
+fact_df = spark.table(GOLD_TABLES["fact_service_requests"])  # type: ignore[name-defined]
+mart_df = fact_df.groupBy("created_date").agg(F.count("*").alias("request_count"))
 
-print(f"Prepared {len(mart_rows)} mart_request_volume_daily rows")
+write_delta_table(
+    mart_df,
+    target_table,
+    config["paths"]["table_paths"][target_table],
+    mode="overwrite",
+)
 
-# TODO: Replace sample rows with a Spark read from `gold.fact_service_requests`.
-# TODO: Join `gold.dim_date` in Databricks if calendar enrichment is needed in the published table.
+print(f"Published {target_table}")
+print(f"mart_request_volume_daily row count: {mart_df.count()}")
