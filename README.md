@@ -179,3 +179,28 @@ Notes:
 - the repo currently uses `PyYAML` and `pytest` for local support and tests
 - replace placeholder values in [config/dev.yaml](config/dev.yaml) and [config/prod.yaml](config/prod.yaml) before attempting any real cloud wiring
 - treat the JSON files in `infra/` as starter templates, not production-ready deployment assets
+
+
+
+## Milestone 9 — Databricks Manual Run Order
+
+- 00_setup/01_secrets_and_widgets.py
+- 00_setup/00_mounts_and_paths.py
+- 01_bronze/01_ingest_nyc311_raw.py
+- 01_bronze/02_bronze_dedup_metadata.py
+- 02_silver/01_clean_service_requests.py
+- 02_silver/02_standardize_locations.py
+- 02_silver/03_standardize_categories.py
+- 02_silver/04_apply_quality_rules.py
+- 03_gold/01_build_dim_date.py
+- 03_gold/02_build_dim_agency.py
+- 03_gold/03_build_dim_complaint_type.py
+- 03_gold/04_build_dim_location.py
+- 03_gold/05_build_dim_status.py
+- 03_gold/06_build_fact_service_requests.py
+- 03_gold/07_build_mart_request_volume_daily.py
+- 03_gold/08_build_mart_service_performance.py
+- 03_gold/09_build_mart_backlog_snapshot.py
+- 04_validation/01_bronze_validation.py
+- 04_validation/02_silver_validation.py
+- 04_validation/03_gold_validation.py
