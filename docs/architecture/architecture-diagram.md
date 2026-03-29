@@ -6,16 +6,16 @@ This document includes the saved architecture image that accompanies the project
 
 ![NYC 311 lakehouse architecture](./nyc311-lakehouse-architecture.png)
 
-This saved PNG gives a quick view of the intended Azure-first lakehouse flow before the detailed notes below.
+This saved PNG shows the planned Azure-first orchestration picture. Milestone 9 proves the manual Databricks-to-ADLS execution path, while the diagram still shows the broader next-step architecture with ADF and Power BI.
 
 ## Intended Diagram
 
-The image should communicate a simple left-to-right execution story:
+The image should communicate a simple left-to-right target architecture:
 
 ```mermaid
 flowchart LR
     A[NYC 311 API] --> B[ADF Pipeline<br/>pl_nyc311_ingest]
-    B --> C[ADLS Raw Landing<br/>raw/nyc311/service_requests/raw]
+    B --> C[ADLS Raw Landing<br/>future ADF-led pattern]
     C --> D[Databricks Handoff<br/>wf_nyc311_lakehouse]
     D --> E[Bronze]
     E --> F[Silver]
@@ -27,9 +27,9 @@ flowchart LR
 ## What The Diagram Should Communicate
 
 - NYC 311 API is the external source system.
-- ADF is the orchestration layer responsible for scheduled or manual ingestion and raw landing.
-- ADLS is the landing and lake storage layer for raw files, checkpoints, and curated outputs.
-- Databricks is the intended processing engine for the bronze, silver, gold, and validation sequence.
+- ADF is the planned orchestration layer for a later phase.
+- ADLS is the storage layer used by the current manual cloud run and the future orchestrated design.
+- Databricks is the processing engine for the bronze, silver, gold, and validation sequence.
 - Power BI is the intended downstream reporting consumer of gold outputs.
 
 ## Reviewer Guidance
@@ -41,5 +41,6 @@ flowchart LR
 
 ## Honest Status
 
-- the ADF, ADLS, and Databricks elements are documented target-state components, not proof of a completed Azure deployment
-- the local Python modules remain the most concrete implementation in the repository today
+- the current Milestone 9 proof point is manual Databricks execution writing bronze, silver, gold, and validation outputs to ADLS
+- the ADF handoff and deployed Databricks workflow shown in the diagram are still target-state components rather than completed deployment artifacts
+- the local Python modules remain the core implementation surface in the repository

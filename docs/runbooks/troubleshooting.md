@@ -1,50 +1,45 @@
 # Troubleshooting
 
-Use this checklist when the documented Azure flow does not behave as expected. The repo is still scaffolded, so some checks are design-level rather than production-console steps.
+Use this checklist when the Milestone 9 manual Databricks-to-ADLS run does not behave as expected. ADF orchestration and deployed jobs are still future work, so start with the notebook path that currently exists.
 
-## API Or Source Failures
+## Setup Failures
 
-- confirm the source path still points to the NYC 311 dataset `/resource/erm2-nwe9.json`
-- verify `run_date`, `window_start`, `window_end`, and `page_size` describe a valid bounded extract
-- check for 4xx, 5xx, timeout, or throttling behavior before assuming the issue is downstream
-- if an app token is being used, verify the secret or configuration exists and was not hardcoded
-- compare the requested source window with the expected daily cadence from `tg_nyc311_daily_ingest`
+- confirm the Databricks widgets point to the expected `environment`, `catalog`, and secret scope
+- confirm the secret scope exists and the configured key names resolve successfully
+- confirm the target catalog is visible in `SHOW CATALOGS`
+- if ADLS access fails during setup, confirm the storage account and container values match the environment config
 
-## Bronze Landing Issues
+## Bronze Failures
 
-- confirm the landing path matches `abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=YYYY-MM-DD/`
-- confirm the folder date matches the batch `run_date`
-- verify expected file naming such as `nyc311_service_requests_<batch-id>.json`
-- check for storage permission or filesystem-name mismatches between `raw`, `curated`, and `logs`
-- if a handoff manifest or checkpoint file is referenced, confirm it points under `nyc311/service_requests/checkpoints/`
+- confirm `01_ingest_nyc311_raw` can reach `https://data.cityofnewyork.us/resource/erm2-nwe9.json`
+- check whether the current watermark is too restrictive and returning no new rows
+- confirm `bronze.nyc311_service_requests_raw` exists before running `02_bronze_dedup_metadata`
+- confirm the watermark path under `bronze/checkpoints/nyc311_service_requests/watermark_state/` is writable
+- remember that the bronze `file_path` field is lineage metadata; it is not proof of a separate landed raw JSON file
 
-## Databricks Notebook Or Job Failures
+## Silver And Gold Failures
 
-- identify the exact failing task in `wf_nyc311_lakehouse` instead of treating the whole run as one undifferentiated failure
-- confirm the shared parameters are aligned: `environment`, `run_date`, `raw_landing_path`, `checkpoint_path`, `catalog`, and schema names
-- verify the cluster placeholder assumptions still make sense for the run: runtime, node types, policy, and access mode
-- confirm the `00_setup` notebooks or equivalent environment setup has been handled before expecting the workflow to run cleanly
-- if a silver or gold notebook fails, check whether the upstream notebook actually produced the table or reference output it expects
+- if a silver notebook fails, confirm the bronze table was created successfully first
+- if a gold notebook fails, confirm `silver.service_requests_clean` and the reference tables exist
+- identify the first failing notebook in the stage order instead of rerunning everything immediately
+- verify the active catalog and schemas are the same across all notebooks in the run
 
 ## Validation Failures
 
-- determine whether the failure is isolated to bronze, silver, or gold before rerunning everything
-- bronze validation failures usually point to missing raw payloads, missing metadata, or duplicate `record_hash` issues
-- silver validation failures usually point to nulls, duplicate `request_id` values, timestamp parsing problems, or unexpected normalized category values
-- gold validation failures usually point to missing upstream reference outputs, dimension or fact dependency issues, or mart reconciliation mismatches
-- fix the earliest failing layer first, then rerun downstream stages in order
+- bronze validation failures usually point to missing metadata, empty raw payloads, or duplicate `record_hash` values
+- silver validation failures usually point to nulls, duplicate `request_id` values, timestamp parsing problems, unexpected category or borough values, or negative resolution hours
+- gold validation failures usually point to missing dimension joins, fact-row mismatches, or mart reconciliation gaps
+- fix the earliest failing layer first, then rerun downstream notebooks in order
 
-## Missing Outputs Or Path Mismatches
+## Missing Outputs Or Path Confusion
 
-- compare ADF raw landing paths, Databricks shared parameters, and storage docs side by side
-- keep `run_date`, `ingest_date`, and `load_date` usage consistent; mismatched folder semantics are a common source of missing-output confusion
-- confirm bronze lands in the `raw` filesystem while silver and gold are documented under `curated`
-- check whether the reviewer is looking for raw JSON files, curated tables, or validation summaries; they live in different places
-- if outputs exist but appear stale, verify whether the trigger is only documented or actually active in the target environment
+- compare the resolved ADLS paths printed by the setup notebooks with the expected bronze, silver, and gold paths in `infra/azure/storage-structure.md`
+- remember that the current Milestone 9 run uses one ADLS filesystem or container, not separate `raw` and `curated` filesystems
+- if a reviewer is looking for proof, use the tables, checkpoint paths, and screenshot evidence rather than assuming an ADF raw landing zone already exists
 
 ## Pause And Investigate When
 
-- source windows overlap unexpectedly
+- the source API is returning no rows but you expected new data
 - checkpoint or watermark state is unclear
-- a backfill run and a normal scheduled run are competing for the same dates
+- a backfill-style rerun may overlap with the current forward watermark
 - downstream gold outputs are missing after an upstream silver failure
