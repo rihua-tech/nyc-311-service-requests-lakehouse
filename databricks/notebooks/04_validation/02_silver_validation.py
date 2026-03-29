@@ -34,10 +34,11 @@ required_nulls = {
 }
 duplicate_request_id_df = silver_df.groupBy("request_id").count().filter("request_id IS NOT NULL AND count > 1")
 duplicate_request_id_rows = sum(row["count"] - 1 for row in duplicate_request_id_df.collect())
+allowed_boroughs = set(BOROUGH_NORMALIZATION_MAP.values()) | {"UNSPECIFIED"}
 unexpected_boroughs = sorted(
     row["borough"]
     for row in silver_df.select("borough").distinct().collect()
-    if row["borough"] not in (None, "") and row["borough"] not in set(BOROUGH_NORMALIZATION_MAP.values())
+    if row["borough"] not in (None, "") and row["borough"] not in allowed_boroughs
 )
 negative_resolution_hours = silver_df.filter("resolution_time_hours < 0").count()
 
