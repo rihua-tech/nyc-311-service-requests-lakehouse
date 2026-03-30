@@ -1,5 +1,15 @@
 # NYC 311 Service Requests Lakehouse
 
+## TL;DR
+
+End-to-end NYC 311 lakehouse pipeline with:
+
+- Bronze → Silver → Gold → Validation implemented in Python + PySpark
+- Manual Azure Databricks execution writing Delta tables to ADLS Gen2
+- Data quality checks and reconciliation across all layers
+- Clear separation between current cloud execution and future orchestration (ADF + Databricks Jobs)
+
+
 > Azure-first medallion lakehouse for NYC 311 operational analytics.
 
 This repo shows how NYC 311 service request data can move from raw extraction to curated reporting outputs using bronze, silver, and gold layers. The core Python modules for ingestion, transformation, quality checks, and gold modeling are implemented locally, and Milestone 9 adds a working manual cloud run in Azure Databricks writing Delta-backed bronze, silver, gold, and validation outputs to ADLS Gen2. ADF orchestration, deployed Databricks jobs, and Power BI delivery remain future work or scaffolding.
