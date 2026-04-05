@@ -22,7 +22,7 @@ from pyspark.sql import functions as F
 from src.common.constants import GOLD_TABLES, SILVER_TABLE
 from src.common.databricks_runtime import bootstrap_notebook, get_widget
 
-bootstrap_notebook(
+config = bootstrap_notebook(
     spark=spark,  # type: ignore[name-defined]
     dbutils=dbutils,  # type: ignore[name-defined]
     extra_widget_defaults={"snapshot_date": ""},
@@ -34,7 +34,9 @@ request_volume_df = spark.table(GOLD_TABLES["mart_request_volume_daily"])  # typ
 service_performance_df = spark.table(GOLD_TABLES["mart_service_performance"])  # type: ignore[name-defined]
 backlog_df = spark.table(GOLD_TABLES["mart_backlog_snapshot"])  # type: ignore[name-defined]
 snapshot_date = get_widget(dbutils, "snapshot_date", default="")  # type: ignore[name-defined]
-snapshot_expr = F.to_date(F.lit(snapshot_date)) if snapshot_date else F.current_date()
+run_date = str(config.get("runtime", {}).get("run_date") or "").strip()
+effective_as_of_date = snapshot_date or run_date
+snapshot_expr = F.to_date(F.lit(effective_as_of_date)) if effective_as_of_date else F.current_date()
 
 duplicate_dim_checks = {
     "dim_agency": spark.table(GOLD_TABLES["dim_agency"]).groupBy("agency_code").count().filter("agency_code IS NOT NULL AND count > 1").count(),  # type: ignore[name-defined]

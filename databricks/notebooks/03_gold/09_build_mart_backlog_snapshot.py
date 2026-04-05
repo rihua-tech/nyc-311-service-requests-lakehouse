@@ -30,9 +30,11 @@ config = bootstrap_notebook(
 )
 target_table = GOLD_TABLES["mart_backlog_snapshot"]
 snapshot_date = get_widget(dbutils, "snapshot_date", default="")  # type: ignore[name-defined]
+run_date = str(config.get("runtime", {}).get("run_date") or "").strip()
+effective_as_of_date = snapshot_date or run_date
 
 fact_df = spark.table(GOLD_TABLES["fact_service_requests"])  # type: ignore[name-defined]
-snapshot_expr = F.to_date(F.lit(snapshot_date)) if snapshot_date else F.current_date()
+snapshot_expr = F.to_date(F.lit(effective_as_of_date)) if effective_as_of_date else F.current_date()
 open_df = fact_df.filter(
     (F.col("created_date") <= snapshot_expr)
     & (
@@ -55,5 +57,5 @@ write_delta_table(
 )
 
 print(f"Published {target_table}")
-print(f"Snapshot date: {snapshot_date or '<current_date>'}")
+print(f"Snapshot date: {effective_as_of_date or '<current_date>'}")
 print(f"mart_backlog_snapshot row count: {mart_df.count()}")
