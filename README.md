@@ -4,44 +4,45 @@
 
 End-to-end NYC 311 lakehouse pipeline with:
 
-- Bronze → Silver → Gold → Validation implemented in Python + PySpark
-- Manual Azure Databricks execution writing Delta tables to ADLS Gen2
+- Bronze -> Silver -> Gold -> Validation implemented in Python + PySpark
+- Working Azure Databricks notebooks plus a real Databricks workflow writing Delta tables to ADLS Gen2
 - Data quality checks and reconciliation across all layers
-- Clear separation between current cloud execution and future orchestration (ADF + Databricks Jobs)
-
+- Clear separation between the current Databricks execution path and future ADF orchestration
 
 > Azure-first medallion lakehouse for NYC 311 operational analytics.
 
-This repo shows how NYC 311 service request data can move from raw extraction to curated reporting outputs using bronze, silver, and gold layers. The core Python modules for ingestion, transformation, quality checks, and gold modeling are implemented locally, and Milestone 9 adds a working manual cloud run in Azure Databricks writing Delta-backed bronze, silver, gold, and validation outputs to ADLS Gen2. ADF orchestration, deployed Databricks jobs, and Power BI delivery remain future work or scaffolding.
+This repo shows how NYC 311 service request data can move from raw extraction to curated reporting outputs using bronze, silver, and gold layers. The core Python modules for ingestion, transformation, quality checks, and gold modeling are implemented locally. Milestone 9 established a working Azure Databricks + ADLS cloud notebook run, and Milestone 10 adds a real Databricks workflow in Jobs & Pipelines that successfully ran the bronze, silver, gold, and validation flow end to end. ADF orchestration, production-grade monitoring, and Power BI delivery remain future work or scaffolding.
 
 ## Project Highlights
 
 - implemented bronze, silver, gold, and reusable quality logic in `src/`
 - exported Databricks notebooks that run the medallion flow in cloud against ADLS-backed Delta paths
+- added a real Databricks workflow in Jobs & Pipelines that runs the notebook dependency chain end to end with runtime parameters
 - validated Databricks secret lookups, Unity Catalog access, ADLS read/write, and layer-by-layer outputs
-- kept ADF, workflow JSON, and cluster JSON clearly marked as starter deployment assets rather than a production deployment
+- kept ADF and the repo-side workflow and cluster JSON files clearly marked as starter deployment assets rather than a production deployment
 
 ## Project Card Copy
 
 - Title: NYC 311 Service Requests Lakehouse
 - Subtitle: Azure-first medallion lakehouse for operational analytics
-- Short description: NYC 311 lakehouse project with implemented bronze, silver, gold, and quality logic plus a working manual Azure Databricks + ADLS execution path for the medallion pipeline.
+- Short description: NYC 311 lakehouse project with implemented bronze, silver, gold, and quality logic plus a working Azure Databricks + ADLS execution path backed by a real Databricks workflow.
 - Stack tags: Azure Data Lake Storage Gen2, Azure Databricks, PySpark, Python, Delta Lake, SQL, Power BI, Azure Data Factory
 
 ## GitHub Metadata Suggestions
 
-- About description: Azure-first medallion lakehouse for NYC 311 service request analytics with implemented bronze, silver, gold, and quality logic plus a working manual Databricks-to-ADLS cloud run.
+- About description: Azure-first medallion lakehouse for NYC 311 service request analytics with implemented bronze, silver, gold, and quality logic plus a working Databricks-to-ADLS cloud run backed by a real Databricks workflow.
 - Recommended topics: `azure-data-factory`, `azure-data-lake-storage`, `databricks`, `delta-lake`, `lakehouse`, `medallion-architecture`, `data-engineering`, `dimensional-modeling`, `pyspark`, `power-bi`
 
 ## Project Overview
 
-Current proven Milestone 9 path:
+Current proven Milestone 10 path:
 
 ```text
 NYC 311 API
-  -> Azure Databricks notebooks
+  -> Databricks workflow
+  -> Databricks notebooks
   -> ADLS Gen2 Delta bronze / silver / gold
-  -> validation notebooks
+  -> validation tasks
 ```
 
 Planned future orchestration path:
@@ -49,11 +50,11 @@ Planned future orchestration path:
 ```text
 NYC 311 API
   -> Azure Data Factory
-  -> Databricks workflow / job deployment
+  -> Databricks workflow
   -> Power BI
 ```
 
-The goal of the repo is to show an end-to-end lakehouse design while being explicit about what is already running in cloud and what still exists as deployment scaffolding.
+The goal of the repo is to show an end-to-end lakehouse design while being explicit about what is already running in cloud and what still exists as future work or deployment scaffolding.
 
 ## Architecture Diagram
 
@@ -76,12 +77,12 @@ NYC 311 data is operationally valuable because it reflects how city services are
 | Area | Status | Notes |
 | --- | --- | --- |
 | Local Python modules | Implemented | `src/` contains bronze ingestion helpers, silver cleaning, reusable quality checks, gold dimensions, fact, and marts |
-| Databricks notebooks | Implemented and manually verified | `databricks/notebooks/` runs the bronze, silver, gold, and validation flow in Azure Databricks |
-| ADLS Gen2 pathing and Delta writes | Implemented and manually verified | runtime config resolves ABFSS paths and the notebooks write Delta-backed outputs to ADLS |
-| Secret-driven storage access | Implemented and manually verified | Databricks setup notebooks validate a secret scope and configure ADLS access without exposing values |
-| Validation notebooks | Implemented and manually verified | bronze, silver, and gold validation notebooks fail fast on quality or reconciliation issues |
-| Databricks workflow deployment | Draft only | `infra/databricks/workflow-job.json` documents the run order but is not a deployed job |
-| ADF orchestration | Scaffolded | `infra/adf/` remains a design and handoff template, not the path used for the current Milestone 9 run |
+| Databricks notebooks | Implemented and cloud verified | `databricks/notebooks/` runs the bronze, silver, gold, and validation flow in Azure Databricks and remains the notebook logic executed by the workflow |
+| ADLS Gen2 pathing and Delta writes | Implemented and cloud verified | runtime config resolves ABFSS paths and the notebooks write Delta-backed outputs to ADLS |
+| Secret-driven storage access | Implemented and cloud verified | Databricks setup notebooks validate a secret scope and configure ADLS access without exposing values |
+| Validation notebooks | Implemented and cloud verified | bronze, silver, and gold validation notebooks fail fast on quality or reconciliation issues |
+| Databricks workflow | Implemented and verified in workspace | a real Databricks workflow has successfully run end to end in Jobs & Pipelines using `environment` and `run_date`; the repo JSON remains a starter deployment asset rather than a full deployment system |
+| ADF orchestration | Scaffolded | `infra/adf/` remains a design and handoff template, not the path used for the current Milestone 10 run |
 | Power BI delivery | Scaffolded | the repo models Power BI as a downstream consumer but does not include a finished report package |
 
 ## What Is Implemented
@@ -94,9 +95,11 @@ NYC 311 data is operationally valuable because it reflects how city services are
 - [src/quality/](src/quality/): reusable validation helpers for nulls, duplicates, schema checks, and row counts
 - [src/transformation/gold_dimensions.py](src/transformation/gold_dimensions.py), [src/transformation/gold_facts.py](src/transformation/gold_facts.py), and [src/transformation/gold_marts.py](src/transformation/gold_marts.py): gold modeling helpers
 - [src/common/databricks_runtime.py](src/common/databricks_runtime.py): widget handling, ABFSS path resolution, catalog validation, schema creation, and ADLS access setup
-- [databricks/notebooks/](databricks/notebooks/): Databricks notebook exports used for the Milestone 9 manual cloud execution path
+- [databricks/notebooks/](databricks/notebooks/): Databricks notebook exports used for the Milestone 9 cloud notebook run and the Milestone 10 workflow
 
-## Milestone 9 &#8212; Real cloud execution in ADLS + Databricks
+## Milestone 9 - Foundation: real cloud execution in ADLS + Databricks
+
+Milestone 9 established the first working cloud notebook path in Azure Databricks against ADLS. Milestone 10 builds on this same notebook chain by running it through a real Databricks workflow.
 
 ### What became real in this milestone
 
@@ -108,7 +111,7 @@ NYC 311 data is operationally valuable because it reflects how city services are
 ### Existing repo components upgraded
 
 - [src/common/databricks_runtime.py](src/common/databricks_runtime.py) now resolves environment config, ABFSS paths, catalog selection, schema creation, and secret-driven ADLS access
-- [config/dev.yaml](config/dev.yaml) contains the current dev storage account, container, catalog, and secret key names used by the manual cloud run
+- [config/dev.yaml](config/dev.yaml) contains the current dev storage account, container, catalog, and secret key names used by the cloud execution path
 - [databricks/notebooks/00_setup/](databricks/notebooks/00_setup/) validates widgets, secret lookups, catalog access, and storage connectivity
 - [databricks/notebooks/01_bronze/](databricks/notebooks/01_bronze/), [databricks/notebooks/02_silver/](databricks/notebooks/02_silver/), [databricks/notebooks/03_gold/](databricks/notebooks/03_gold/), and [databricks/notebooks/04_validation/](databricks/notebooks/04_validation/) execute the medallion and validation flow in cloud
 
@@ -128,7 +131,7 @@ NYC 311 data is operationally valuable because it reflects how city services are
 - an Azure Databricks workspace for notebook execution
 - Unity Catalog for the active catalog and bronze, silver, and gold schemas
 - a Databricks secret scope for ADLS credentials
-- ADF definitions remain in the repo, but they are not the component driving the current Milestone 9 run
+- ADF definitions remain in the repo, but they are not the component driving the current Milestone 10 run
 
 ### ADLS path structure at a high level
 
@@ -136,7 +139,7 @@ NYC 311 data is operationally valuable because it reflects how city services are
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/silver/` for the cleaned silver table and silver reference tables
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/gold/` for dimensions, fact, and marts
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state/` for incremental watermark persistence
-- `bronze/.../raw_batches/...` is currently used as lineage metadata in the bronze `file_path` column; the Milestone 9 run writes Delta tables and watermark state rather than a separate ADF raw-file landing flow
+- `bronze/.../raw_batches/...` is currently used as lineage metadata in the bronze `file_path` column; the current implementation writes Delta tables and watermark state rather than a separate ADF raw-file landing flow
 
 More detail is in [infra/azure/storage-structure.md](infra/azure/storage-structure.md).
 
@@ -147,7 +150,7 @@ More detail is in [infra/azure/storage-structure.md](infra/azure/storage-structu
 - the setup notebook validates secret lookups with `dbutils.secrets.get` without printing any secret values
 - [src/common/databricks_runtime.py](src/common/databricks_runtime.py) applies OAuth Spark settings for ADLS when manual storage auth is needed and can fall back to workspace-managed access patterns when direct Spark storage config is unavailable
 
-### How to run the notebooks in order
+### Notebook order used by the cloud run and workflow
 
 1. `databricks/notebooks/00_setup/01_secrets_and_widgets.py`
 2. `databricks/notebooks/00_setup/00_mounts_and_paths.py`
@@ -182,10 +185,27 @@ More detail is in [infra/azure/storage-structure.md](infra/azure/storage-structu
 
 Existing Milestone 9 evidence is already stored under [docs/screenshots/milestone-9/](docs/screenshots/milestone-9/), including setup proof, bronze proof, silver proof, gold proof, and validation proof.
 
+## Milestone 10 - Real Databricks workflow execution
+
+### What became real in this milestone
+
+- a real Databricks workflow now exists in Jobs & Pipelines and successfully ran the medallion flow end to end
+- the workflow uses runtime parameters `environment` and `run_date`
+- queueing is enabled and the workflow allows only one concurrent run at a time
+- the workflow enforces task dependencies from setup through validation, so downstream tasks wait for upstream success
+- task-level DAG visibility, run history, and failed-task inspection are now part of the working cloud path
+- the workflow runs the same setup, bronze, silver, gold, and validation notebook chain proven in Milestone 9, now as a Databricks workflow rather than only as manual notebook sequencing
+- screenshot proof for the successful run, workflow DAG, and job parameters is stored under [docs/screenshots/milestone-10/](docs/screenshots/milestone-10/)
+
+### Workflow run evidence
+
+- successful workflow run screenshot: [docs/screenshots/milestone-10/m10-successful-job-run.png](docs/screenshots/milestone-10/m10-successful-job-run.png)
+- workflow DAG screenshots: [docs/screenshots/milestone-10/m10-workflow-dag-part1-setup-bronze-silver.png](docs/screenshots/milestone-10/m10-workflow-dag-part1-setup-bronze-silver.png) and [docs/screenshots/milestone-10/m10-workflow-dag-part2-gold-validation.png](docs/screenshots/milestone-10/m10-workflow-dag-part2-gold-validation.png)
+- job parameters screenshot showing `environment` and `run_date`: [docs/screenshots/milestone-10/m10-job-parameters.png](docs/screenshots/milestone-10/m10-job-parameters.png)
+
 ### What is still future work or still scaffolded
 
 - ADF-triggered ingestion and orchestration from `infra/adf/`
-- deployment of the draft Databricks workflow in [infra/databricks/workflow-job.json](infra/databricks/workflow-job.json)
 - production-grade cluster policies, CI/CD, monitoring, alerting, and infrastructure-as-code
 - a hardened backfill and replay operating model beyond manual notebook reruns
 - Power BI assets beyond architecture and downstream-consumer placeholders
@@ -249,8 +269,8 @@ make test
 
 Notes:
 
-- the notebook files are `.py` exports of the Databricks notebooks used for the Milestone 9 manual cloud run
+- the notebook files are `.py` exports of the Databricks notebooks used in the Milestone 9 cloud run and the Milestone 10 workflow
 - local tests validate the Python helper surface, not a live Spark or Azure workspace
 - the repo currently uses `PyYAML` and `pytest` for local support and tests
 - keep secret values out of source control; only secret names and non-sensitive runtime config belong in checked-in files
-- treat `infra/adf/`, [infra/databricks/workflow-job.json](infra/databricks/workflow-job.json), and [infra/databricks/cluster-config.json](infra/databricks/cluster-config.json) as deployment starters rather than completed production assets
+- treat `infra/adf/`, [infra/databricks/workflow-job.json](infra/databricks/workflow-job.json), and [infra/databricks/cluster-config.json](infra/databricks/cluster-config.json) as repo-side deployment starters rather than completed production assets
