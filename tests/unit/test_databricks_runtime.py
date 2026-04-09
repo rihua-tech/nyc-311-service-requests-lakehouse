@@ -37,6 +37,29 @@ def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
         assert config["paths"]["table_paths"][table_name].startswith(config["paths"]["gold_base_path"])
 
 
+def test_resolve_runtime_config_applies_ingestion_contract_overrides() -> None:
+    config = resolve_runtime_config(
+        "dev",
+        overrides={
+            "run_date": "2024-01-02",
+            "ingestion_mode": "adf_landed_raw",
+            "raw_landing_path": "abfss://raw@storage.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=2024-01-02/",
+            "batch_id": "adf-202401020115",
+            "window_start": "2024-01-02T00:00:00",
+            "window_end": "2024-01-03T00:00:00",
+        },
+    )
+
+    assert config["runtime"] == {
+        "run_date": "2024-01-02",
+        "ingestion_mode": "adf_landed_raw",
+        "raw_landing_path": "abfss://raw@storage.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=2024-01-02/",
+        "batch_id": "adf-202401020115",
+        "window_start": "2024-01-02T00:00:00",
+        "window_end": "2024-01-03T00:00:00",
+    }
+
+
 def test_validate_catalog_access_raises_clear_error_for_missing_catalog() -> None:
     class FakeSpark:
         class _Result:

@@ -12,6 +12,11 @@ BASE_WIDGET_DEFAULTS = {
     "environment": "dev",
     "catalog": "",
     "run_date": "",
+    "ingestion_mode": "api_extract",
+    "raw_landing_path": "",
+    "batch_id": "",
+    "window_start": "",
+    "window_end": "",
     "secret_scope": "",
     "sp_client_id_key": "",
     "sp_client_secret_key": "",
@@ -78,13 +83,24 @@ def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any]
 
     source = resolved.setdefault("source", {})
     databricks = resolved.setdefault("databricks", {})
+    runtime = resolved.setdefault("runtime", {})
 
     if overrides.get("page_size") is not None:
         source["page_size"] = int(overrides["page_size"])
     if overrides.get("max_pages_per_run") is not None:
         source["max_pages_per_run"] = int(overrides["max_pages_per_run"])
     if overrides.get("run_date") is not None:
-        resolved.setdefault("runtime", {})["run_date"] = overrides["run_date"]
+        runtime["run_date"] = str(overrides["run_date"]).strip()
+    if overrides.get("ingestion_mode") is not None:
+        runtime["ingestion_mode"] = str(overrides["ingestion_mode"]).strip()
+    if overrides.get("raw_landing_path") is not None:
+        runtime["raw_landing_path"] = str(overrides["raw_landing_path"]).strip()
+    if overrides.get("batch_id") is not None:
+        runtime["batch_id"] = str(overrides["batch_id"]).strip()
+    if overrides.get("window_start") is not None:
+        runtime["window_start"] = str(overrides["window_start"]).strip()
+    if overrides.get("window_end") is not None:
+        runtime["window_end"] = str(overrides["window_end"]).strip()
     if overrides.get("secret_scope"):
         databricks["secret_scope"] = str(overrides["secret_scope"])
     if overrides.get("catalog") is not None:
@@ -102,6 +118,7 @@ def resolve_runtime_config(
 
     azure = config.setdefault("azure", {})
     databricks = config.setdefault("databricks", {})
+    runtime = config.setdefault("runtime", {})
     source = config.setdefault("source", {})
     paths = config.setdefault("paths", {})
 
@@ -158,6 +175,12 @@ def resolve_runtime_config(
     azure["container"] = filesystem
     databricks.setdefault("secret_scope", "adls-sp")
     databricks["catalog"] = str(databricks.get("catalog") or "").strip()
+    runtime["run_date"] = str(runtime.get("run_date") or "").strip()
+    runtime["ingestion_mode"] = str(runtime.get("ingestion_mode") or "api_extract").strip() or "api_extract"
+    runtime["raw_landing_path"] = str(runtime.get("raw_landing_path") or "").strip()
+    runtime["batch_id"] = str(runtime.get("batch_id") or "").strip()
+    runtime["window_start"] = str(runtime.get("window_start") or "").strip()
+    runtime["window_end"] = str(runtime.get("window_end") or "").strip()
     paths.update(
         {
             "bronze_base_path": bronze_base_path,
@@ -361,6 +384,11 @@ def bootstrap_notebook(
     overrides = {
         "catalog": get_widget(dbutils, "catalog", default=""),
         "run_date": get_widget(dbutils, "run_date", default=""),
+        "ingestion_mode": get_widget(dbutils, "ingestion_mode", default="api_extract"),
+        "raw_landing_path": get_widget(dbutils, "raw_landing_path", default=""),
+        "batch_id": get_widget(dbutils, "batch_id", default=""),
+        "window_start": get_widget(dbutils, "window_start", default=""),
+        "window_end": get_widget(dbutils, "window_end", default=""),
         "secret_scope": get_widget(dbutils, "secret_scope", default=""),
         "page_size": get_widget_int(dbutils, "page_size"),
         "max_pages_per_run": get_widget_int(dbutils, "max_pages_per_run"),

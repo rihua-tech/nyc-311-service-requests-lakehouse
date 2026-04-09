@@ -88,12 +88,12 @@
         "typeProperties": {
           "notebookPath": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/01_ingest_nyc311_raw",
           "baseParameters": {
+            "ingestion_mode": "adf_landed_raw",
             "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=@{pipeline().parameters.run_date}/",
-            "checkpoint_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/",
-            "handoff_manifest_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/checkpoints/adf_handoff/run_date=@{pipeline().parameters.run_date}/ingest_manifest_@{pipeline().parameters.batch_id}.json",
-            "workflow_definition": "infra/databricks/workflow-job.json",
             "run_date": "@pipeline().parameters.run_date",
-            "batch_id": "@pipeline().parameters.batch_id"
+            "batch_id": "@pipeline().parameters.batch_id",
+            "window_start": "@pipeline().parameters.window_start",
+            "window_end": "@pipeline().parameters.window_end"
           }
         },
         "notes": "Placeholder handoff only. In a deployed version this would trigger the Databricks workflow or job sequence that continues through silver and gold."
