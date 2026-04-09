@@ -22,6 +22,8 @@ def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
 
     assert config["azure"]["storage_account"] == "nyc311adlsg22026"
     assert config["azure"]["container"] == "nyc311"
+    assert config["azure"]["raw_container"] == "nyc311"
+    assert config["azure"]["curated_container"] == "nyc311"
     assert config["databricks"]["catalog"] == "workspace_catalog"
     assert config["paths"]["bronze_base_path"].endswith("/bronze")
     assert config["paths"]["silver_base_path"].endswith("/silver")
@@ -35,6 +37,28 @@ def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
 
     for table_name in GOLD_TABLES.values():
         assert config["paths"]["table_paths"][table_name].startswith(config["paths"]["gold_base_path"])
+
+
+def test_resolve_runtime_config_separates_raw_and_curated_default_paths() -> None:
+    config = resolve_runtime_config("prod")
+
+    assert config["azure"]["raw_container"] == "raw"
+    assert config["azure"]["curated_container"] == "curated"
+    assert config["azure"]["container"] == "curated"
+    assert config["paths"]["bronze_raw_batch_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/nyc311_service_requests_raw/raw_batches"
+    )
+    assert config["paths"]["checkpoint_base_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints"
+    )
+    assert config["source"]["watermark_state_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state"
+    )
+    assert config["paths"]["bronze_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/bronze")
+    assert config["paths"]["silver_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/silver")
+    assert config["paths"]["gold_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/gold")
+    assert config["paths"]["table_paths"][BRONZE_TABLE].startswith(config["paths"]["bronze_base_path"])
+    assert config["paths"]["table_paths"][SILVER_TABLE].startswith(config["paths"]["silver_base_path"])
 
 
 def test_resolve_runtime_config_applies_ingestion_contract_overrides() -> None:

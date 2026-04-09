@@ -37,6 +37,14 @@ def _table_path(base_path: str, table_name: str) -> str:
     return f"{base_path.rstrip('/')}/{table_name.split('.')[-1]}"
 
 
+def _first_non_blank(*values: Any) -> str | None:
+    for value in values:
+        resolved = str(value).strip() if value is not None else ""
+        if resolved:
+            return resolved
+    return None
+
+
 def quote_identifier(identifier: str) -> str:
     """Safely quote a catalog, schema, or table identifier for Spark SQL."""
     return f"`{identifier.replace('`', '``')}`"
@@ -74,6 +82,31 @@ def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
     excluded_catalogs = {"samples", "system", "hive_metastore", "spark_catalog"}
     candidates = [catalog for catalog in available_catalogs if catalog not in excluded_catalogs]
     return candidates[0] if len(candidates) == 1 else None
+
+
+def _resolve_storage_filesystems(azure: Mapping[str, Any]) -> tuple[str, str]:
+    shared_filesystem = _first_non_blank(azure.get("container"), azure.get("filesystem"))
+    raw_filesystem = _first_non_blank(
+        azure.get("raw_container"),
+        azure.get("raw_filesystem"),
+        shared_filesystem,
+        azure.get("curated_container"),
+        azure.get("curated_filesystem"),
+    )
+    curated_filesystem = _first_non_blank(
+        azure.get("curated_container"),
+        azure.get("curated_filesystem"),
+        shared_filesystem,
+        raw_filesystem,
+    )
+
+    if not raw_filesystem or not curated_filesystem:
+        raise ValueError(
+            "Environment config must define azure.storage_account and either a shared "
+            "azure.container/filesystem or raw and curated container/filesystem values."
+        )
+
+    return raw_filesystem, curated_filesystem
 
 
 def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -123,21 +156,24 @@ def resolve_runtime_config(
     paths = config.setdefault("paths", {})
 
     storage_account = azure.get("storage_account")
-    filesystem = azure.get("container") or azure.get("filesystem") or azure.get("raw_container") or azure.get("curated_container")
-    if not storage_account or not filesystem:
-        raise ValueError("Environment config must define azure.storage_account and azure.container/filesystem.")
+    raw_filesystem, curated_filesystem = _resolve_storage_filesystems(azure)
+    if not storage_account:
+        raise ValueError(
+            "Environment config must define azure.storage_account and either a shared "
+            "azure.container/filesystem or raw and curated container/filesystem values."
+        )
 
-    bronze_base_path = paths.get("bronze_base_path") or build_abfss_uri(filesystem, storage_account, "bronze")
-    silver_base_path = paths.get("silver_base_path") or build_abfss_uri(filesystem, storage_account, "silver")
-    gold_base_path = paths.get("gold_base_path") or build_abfss_uri(filesystem, storage_account, "gold")
+    bronze_base_path = paths.get("bronze_base_path") or build_abfss_uri(curated_filesystem, storage_account, "bronze")
+    silver_base_path = paths.get("silver_base_path") or build_abfss_uri(curated_filesystem, storage_account, "silver")
+    gold_base_path = paths.get("gold_base_path") or build_abfss_uri(curated_filesystem, storage_account, "gold")
     checkpoint_base_path = paths.get("checkpoint_base_path") or build_abfss_uri(
-        filesystem,
+        raw_filesystem,
         storage_account,
         "bronze",
         "checkpoints",
     )
     bronze_raw_batch_path = paths.get("bronze_raw_batch_path") or build_abfss_uri(
-        filesystem,
+        raw_filesystem,
         storage_account,
         "bronze",
         "nyc311_service_requests_raw",
@@ -147,7 +183,7 @@ def resolve_runtime_config(
     watermark_state_path = source.get("watermark_state_path")
     if not watermark_state_path or str(watermark_state_path).startswith("local_state/"):
         watermark_state_path = build_abfss_uri(
-            filesystem,
+            raw_filesystem,
             storage_account,
             "bronze",
             "checkpoints",
@@ -172,7 +208,9 @@ def resolve_runtime_config(
         }
     )
 
-    azure["container"] = filesystem
+    azure["raw_container"] = raw_filesystem
+    azure["curated_container"] = curated_filesystem
+    azure["container"] = _first_non_blank(azure.get("container"), azure.get("filesystem"), curated_filesystem)
     databricks.setdefault("secret_scope", "adls-sp")
     databricks["catalog"] = str(databricks.get("catalog") or "").strip()
     runtime["run_date"] = str(runtime.get("run_date") or "").strip()
