@@ -1,4 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS bronze;
+-- Replace <storage-account> with the target ADLS account before running this DDL in Databricks.
+CREATE SCHEMA IF NOT EXISTS bronze
+LOCATION 'abfss://curated@<storage-account>.dfs.core.windows.net/bronze';
 
 CREATE TABLE IF NOT EXISTS bronze.nyc311_service_requests_raw (
     ingest_id STRING,
@@ -14,4 +16,3 @@ CREATE TABLE IF NOT EXISTS bronze.nyc311_service_requests_raw (
 USING DELTA;
 
 -- TODO: Add partitioning and table properties only after ingestion patterns are confirmed.
-

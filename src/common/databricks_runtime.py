@@ -307,7 +307,7 @@ def configure_adls_service_principal_access(
 
 
 def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
-    """Validate that the configured Unity Catalog catalog exists and is accessible."""
+    """Validate that the configured catalog exists and is accessible."""
     databricks = config.get("databricks", {})
     environment = str(config.get("environment", "<unknown>"))
     catalog = str(databricks.get("catalog") or "").strip()
@@ -328,7 +328,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
     if not catalog:
         visible_catalogs = ", ".join(sorted(available_catalogs)) if available_catalogs else "<none returned>"
         raise ValueError(
-            "No Unity Catalog catalog is configured. Set databricks.catalog in "
+            "No catalog is configured. Set databricks.catalog in "
             f"config/{environment}.yaml or notebook widget 'catalog' to the catalog you can use for this workspace. "
             f"Visible catalogs from this session: {visible_catalogs}"
         )
@@ -337,7 +337,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
         visible_catalogs = ", ".join(sorted(available_catalogs))
         raise ValueError(
             f"Configured databricks.catalog='{catalog}' is not visible to this workspace principal or cluster. "
-            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a Unity Catalog "
+            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a "
             f"catalog you can actually USE in this workspace. Visible catalogs: {visible_catalogs}"
         )
 
@@ -345,7 +345,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
         spark.sql(f"USE CATALOG {quote_identifier(catalog)}")
     except Exception as exc:
         raise ValueError(
-            f"Configured databricks.catalog='{catalog}' could not be activated in this Unity Catalog workspace. "
+            f"Configured databricks.catalog='{catalog}' could not be activated in this workspace. "
             f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a catalog "
             "that exists and is accessible to the current Databricks user/cluster."
         ) from exc
@@ -354,18 +354,23 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
 
 
 def ensure_catalog_and_schemas(spark: Any, config: Mapping[str, Any]) -> None:
-    """Set the active catalog and create the bronze, silver, and gold schemas."""
+    """Set the active catalog and create the bronze, silver, and gold schemas with explicit locations."""
     databricks = config.get("databricks", {})
-    catalog = validate_catalog_access(spark, config)
+    paths = config.get("paths", {})
+    validate_catalog_access(spark, config)
 
-    for schema_name in (
-        databricks.get("bronze_schema", "bronze"),
-        databricks.get("silver_schema", "silver"),
-        databricks.get("gold_schema", "gold"),
+    for schema_name, schema_path in (
+        (databricks.get("bronze_schema", "bronze"), paths.get("bronze_base_path")),
+        (databricks.get("silver_schema", "silver"), paths.get("silver_base_path")),
+        (databricks.get("gold_schema", "gold"), paths.get("gold_base_path")),
     ):
         if schema_name:
+            if not schema_path:
+                raise ValueError(f"No storage location is configured for schema {schema_name!r}.")
             spark.sql(
-                f"CREATE SCHEMA IF NOT EXISTS {quote_identifier(catalog)}.{quote_identifier(str(schema_name))}"
+                "CREATE SCHEMA IF NOT EXISTS "
+                f"{quote_identifier(str(schema_name))} "
+                f"LOCATION '{_escape_sql_string(str(schema_path))}'"
             )
 
 

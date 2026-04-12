@@ -5,6 +5,7 @@ from src.common import databricks_runtime as runtime
 from src.common.databricks_runtime import (
     build_abfss_uri,
     configure_adls_service_principal_access,
+    ensure_catalog_and_schemas,
     resolve_runtime_config,
     validate_catalog_access,
     write_delta_table,
@@ -135,6 +136,51 @@ def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> Non
 
     assert resolved_catalog == "dbw_nyc311_lakehouse_central"
     assert config["databricks"]["catalog"] == "dbw_nyc311_lakehouse_central"
+
+
+def test_ensure_catalog_and_schemas_uses_explicit_schema_locations() -> None:
+    queries: list[str] = []
+
+    class FakeSpark:
+        class _CatalogsResult:
+            def collect(self) -> list[tuple[str]]:
+                return [("spark_catalog",)]
+
+        class _Result:
+            def collect(self) -> list[tuple[str]]:
+                return []
+
+        def sql(self, query: str) -> "FakeSpark._CatalogsResult | FakeSpark._Result":
+            queries.append(query)
+            if query == "SHOW CATALOGS":
+                return self._CatalogsResult()
+            return self._Result()
+
+    ensure_catalog_and_schemas(
+        FakeSpark(),
+        {
+            "environment": "prod",
+            "databricks": {
+                "catalog": "spark_catalog",
+                "bronze_schema": "bronze",
+                "silver_schema": "silver",
+                "gold_schema": "gold",
+            },
+            "paths": {
+                "bronze_base_path": "abfss://curated@account.dfs.core.windows.net/bronze",
+                "silver_base_path": "abfss://curated@account.dfs.core.windows.net/silver",
+                "gold_base_path": "abfss://curated@account.dfs.core.windows.net/gold",
+            },
+        },
+    )
+
+    assert queries == [
+        "SHOW CATALOGS",
+        "USE CATALOG `spark_catalog`",
+        "CREATE SCHEMA IF NOT EXISTS `bronze` LOCATION 'abfss://curated@account.dfs.core.windows.net/bronze'",
+        "CREATE SCHEMA IF NOT EXISTS `silver` LOCATION 'abfss://curated@account.dfs.core.windows.net/silver'",
+        "CREATE SCHEMA IF NOT EXISTS `gold` LOCATION 'abfss://curated@account.dfs.core.windows.net/gold'",
+    ]
 
 
 def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPatch) -> None:
