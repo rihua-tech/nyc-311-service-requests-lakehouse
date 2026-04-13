@@ -167,9 +167,9 @@ Notes:
 - For the current cloud operating path and manual verification steps, start with [docs/runbooks/pipeline-runbook.md](docs/runbooks/pipeline-runbook.md).
 - For a reviewer following the proof trail, the fastest path is the architecture note, then the Milestone 11 runbook, then the milestone screenshot folders.
 
-## Future Work / Not Yet Implemented
+## Future Work 
 
-- Production-grade CI/CD, monitoring, alerting, cluster policies, and broader operating controls.
+- Basic GitHub Actions CI is implemented; production-grade deployment automation / CD, monitoring, alerting, cluster policies, and broader operating controls are still future work.
 - Hardened deployment packaging or IaC for ADF and Databricks beyond the starter JSON files in `infra/`.
 - Automated backfill and replay orchestration beyond manual reruns; see [docs/runbooks/backfill-runbook.md](docs/runbooks/backfill-runbook.md).
 - A finished Power BI report deliverable beyond the current metric definitions and mockup notes.
