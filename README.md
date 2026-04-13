@@ -12,7 +12,7 @@ Azure-first medallion lakehouse portfolio project for NYC 311 operational analyt
 
 Larger view and supporting notes: [docs/architecture/architecture-diagram.md](docs/architecture/architecture-diagram.md).
 
-## gi Quick Proof Summary
+## Quick Proof Summary
 
 - `src/` implements the core local pipeline logic for extraction, bronze loading, silver cleaning, reusable quality checks, and gold modeling.
 - Cloud proof exists across three milestones: Milestone 9 verified Databricks + ADLS notebook execution, Milestone 10 verified a real Databricks workflow, and Milestone 11 verified a real ADF REST -> ADLS raw landing plus Databricks notebook handoff.
