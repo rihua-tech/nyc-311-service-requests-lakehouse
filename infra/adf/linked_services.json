@@ -4,18 +4,18 @@
       "name": "ls_nyc311_http",
       "type": "RestService",
       "properties": {
-        "description": "Placeholder linked service for the NYC Open Data 311 API endpoint.",
+        "description": "Starter linked service definition for the NYC Open Data 311 API endpoint used by the Milestone 11 raw landing contract.",
         "baseUrl": "https://data.cityofnewyork.us",
         "authenticationType": "Anonymous",
         "enableServerCertificateValidation": true
       },
-      "notes": "Use a Socrata app token or request headers only if the final API contract requires them. No credential is stored here."
+      "notes": "This repo-side JSON documents the linked service name and expected endpoint. Use a Socrata app token or request headers only if the final API contract requires them."
     },
     {
       "name": "ls_adls_nyc311",
       "type": "AzureBlobFS",
       "properties": {
-        "description": "Placeholder ADLS Gen2 linked service for raw, curated, and log storage.",
+        "description": "Starter ADLS Gen2 linked service definition for the Milestone 11 raw landing and downstream curated storage pattern.",
         "url": "https://<your-storage-account>.dfs.core.windows.net",
         "authenticationType": "ManagedIdentity"
       },
@@ -25,12 +25,12 @@
       "name": "ls_databricks_nyc311",
       "type": "AzureDatabricks",
       "properties": {
-        "description": "Placeholder linked service for the Databricks workspace that continues bronze, silver, and gold processing.",
+        "description": "Starter linked service definition for the Databricks workspace that receives the Milestone 11 bronze handoff.",
         "domain": "https://<your-databricks-workspace>",
         "workspaceResourceId": "/subscriptions/<your-subscription-id>/resourceGroups/rg-nyc311-<env>/providers/Microsoft.Databricks/workspaces/dbw-nyc311-<env>",
         "existingClusterId": "<your-cluster-id>"
       },
-      "notes": "No token or secret is included. Final authentication and cluster policy decisions are intentionally left as placeholders."
+      "notes": "No token or secret is included. Final authentication and cluster policy decisions are intentionally left as deployment-time choices."
     }
   ]
 }

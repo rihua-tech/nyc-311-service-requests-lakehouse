@@ -3,16 +3,21 @@
 # MAGIC # 01 Ingest NYC311 Raw
 # MAGIC
 # MAGIC Purpose:
-# MAGIC - Load raw NYC 311 API data into the bronze layer.
+# MAGIC - Load NYC 311 raw data into the bronze layer from either a Databricks-managed API extract
+# MAGIC   or an ADF-landed raw JSON handoff.
 # MAGIC
 # MAGIC Expected inputs:
 # MAGIC - `environment`
+# MAGIC - `catalog`
 # MAGIC - `ingestion_mode`
 # MAGIC - `raw_landing_path` when ADF lands raw JSON before Databricks
+# MAGIC - `batch_id`, `run_date`, `window_start`, and `window_end` for lineage and handoff tracing
 # MAGIC - optional `watermark_value` when Databricks still owns API extraction
 # MAGIC
 # MAGIC Expected outputs:
 # MAGIC - writes to `bronze.nyc311_service_requests_raw`
+# MAGIC - updates the source watermark only when Databricks owns API extraction; in
+# MAGIC   `adf_landed_raw` mode ADF owns the source extraction window
 # MAGIC
 # MAGIC Major steps:
 # MAGIC 1. Load config.

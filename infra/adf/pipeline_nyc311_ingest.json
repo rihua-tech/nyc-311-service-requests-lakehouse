@@ -1,8 +1,16 @@
 {
   "name": "pl_nyc311_ingest",
   "properties": {
-    "description": "Placeholder ADF pipeline for NYC 311 extraction into ADLS bronze and a Databricks handoff. This file documents the intended orchestration shape only and is not a deployed pipeline definition.",
+    "description": "Starter ADF pipeline definition aligned to the implemented Milestone 11 REST-to-ADLS raw landing and Databricks handoff contract.",
     "parameters": {
+      "environment": {
+        "type": "string",
+        "defaultValue": "dev"
+      },
+      "catalog": {
+        "type": "string",
+        "defaultValue": "spark_catalog"
+      },
       "run_date": {
         "type": "string",
         "defaultValue": "<yyyy-mm-dd>"
@@ -69,7 +77,7 @@
         "notes": "Pull a bounded NYC 311 extract and land the raw response in the bronze landing path under the raw filesystem."
       },
       {
-        "name": "RunDatabricksBronzeWorkflowPlaceholder",
+        "name": "RunDatabricksBronzeHandoff",
         "type": "DatabricksNotebook",
         "dependsOn": [
           {
@@ -88,15 +96,17 @@
         "typeProperties": {
           "notebookPath": "/Repos/<your-user>/nyc-311-service-requests-lakehouse/databricks/notebooks/01_bronze/01_ingest_nyc311_raw",
           "baseParameters": {
+            "environment": "@pipeline().parameters.environment",
+            "catalog": "@pipeline().parameters.catalog",
             "ingestion_mode": "adf_landed_raw",
-            "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=@{pipeline().parameters.run_date}/",
+            "raw_landing_path": "abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=@{pipeline().parameters.run_date}/nyc311_service_requests_@{pipeline().parameters.batch_id}.json",
             "run_date": "@pipeline().parameters.run_date",
             "batch_id": "@pipeline().parameters.batch_id",
             "window_start": "@pipeline().parameters.window_start",
             "window_end": "@pipeline().parameters.window_end"
           }
         },
-        "notes": "Placeholder handoff only. In a deployed version this would trigger the Databricks workflow or job sequence that continues through silver and gold."
+        "notes": "Repo-side starter handoff definition. Replace the placeholders before deployment and continue the downstream Databricks notebook or workflow sequence after bronze."
       }
     ]
   }

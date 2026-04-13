@@ -5,7 +5,7 @@
       "type": "ScheduleTrigger",
       "runtimeState": "Stopped",
       "properties": {
-        "description": "Placeholder recurring trigger for daily NYC 311 ingestion into ADLS bronze with downstream Databricks handoff.",
+        "description": "Starter recurring trigger definition for daily NYC 311 raw landing with downstream Databricks handoff.",
         "pipelines": [
           {
             "pipelineReference": {
@@ -13,6 +13,8 @@
               "type": "PipelineReference"
             },
             "parameters": {
+              "environment": "dev",
+              "catalog": "spark_catalog",
               "run_date": "@{formatDateTime(addDays(trigger().scheduledTime,-1),'yyyy-MM-dd')}",
               "window_start": "@{concat(formatDateTime(addDays(trigger().scheduledTime,-1),'yyyy-MM-dd'),'T00:00:00')}",
               "window_end": "@{concat(formatDateTime(trigger().scheduledTime,'yyyy-MM-dd'),'T00:00:00')}",
@@ -35,7 +37,7 @@
           }
         }
       },
-      "notes": "Placeholder schedule only. It documents intended cadence and parameters; it does not mean the trigger is deployed or active."
+      "notes": "Starter schedule only. It documents the Milestone 11 cadence and parameters but does not mean the trigger is deployed or active."
     }
   ]
 }
