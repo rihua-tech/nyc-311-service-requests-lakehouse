@@ -29,8 +29,8 @@ Larger view and supporting notes: [docs/architecture/architecture-diagram.md](do
 flowchart TD
     A[NYC 311 API] --> B[Azure Data Factory pipeline]
     B --> C[ADLS raw JSON landing]
-    C --> D[Databricks bronze handoff<br/>01_ingest_nyc311_raw<br/>mode=adf_landed_raw]
-    D --> E[Bronze Delta]
+    C --> D[Databricks handoff<br/>01_ingest_nyc311_raw<br/>ingestion_mode=adf_landed_raw]
+    D --> E[ADLS-backed Delta bronze]
     E --> F[Silver]
     F --> G[Gold]
     G --> H[Manual / path-based validation]

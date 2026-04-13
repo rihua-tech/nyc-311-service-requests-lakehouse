@@ -26,7 +26,7 @@
 ## Raw Landing Path Pattern
 
 - ADF raw landing file: `abfss://raw@<storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=<run_date>/nyc311_service_requests_<batch_id>.json`
-- Databricks handoff `raw_landing_path`: `abfss://raw@<storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=<run_date>/`
+- Databricks handoff `raw_landing_path`: `abfss://raw@<storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=<run_date>/nyc311_service_requests_<batch_id>.json`
 
 ## Notebook Parameter Mapping
 
@@ -39,7 +39,7 @@
 | `window_start` | `window_start` |
 | `window_end` | `window_end` |
 | constant `adf_landed_raw` | `ingestion_mode` |
-| derived ADLS folder path for the run date | `raw_landing_path` |
+| derived ADLS landed file path for the run | `raw_landing_path` |
 
 ## Linked Services Used By The Repo-Side Starter Assets
 

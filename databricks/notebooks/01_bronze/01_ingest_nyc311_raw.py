@@ -10,7 +10,7 @@
 # MAGIC - `environment`
 # MAGIC - `catalog`
 # MAGIC - `ingestion_mode`
-# MAGIC - `raw_landing_path` when ADF lands raw JSON before Databricks
+# MAGIC - `raw_landing_path` pointing to the landed raw JSON file when ADF lands data before Databricks
 # MAGIC - `batch_id`, `run_date`, `window_start`, and `window_end` for lineage and handoff tracing
 # MAGIC - optional `watermark_value` when Databricks still owns API extraction
 # MAGIC

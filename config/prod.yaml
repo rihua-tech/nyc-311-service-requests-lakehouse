@@ -15,12 +15,27 @@ databricks:
   workspace_url: "https://<your-databricks-workspace>"
   # Manual step: set this to the real Unity Catalog catalog for the target workspace.
   catalog: ""
+  secret_scope: "adls-sp"
+  sp_client_id_key: "client-id"
+  sp_client_secret_key: "client-secret"
+  sp_tenant_id_key: "tenant-id"
   bronze_schema: "bronze"
   silver_schema: "silver"
   gold_schema: "gold"
   cluster_id: "<your-cluster-id>"
 
 source:
-  base_url: "https://data.cityofnewyork.us/resource/<dataset-id>.json"
-  page_size: 5000
-  watermark_column: "created_date"
+  system_name: "nyc_311_api"
+  base_url: "https://data.cityofnewyork.us/resource/erm2-nwe9.json"
+  page_size: 1000
+  max_pages_per_run: 10
+  timeout_seconds: 30
+  order_by: "created_date ASC"
+  watermark_field: "created_date"
+
+paths:
+  bronze_base_path: "abfss://curated@<your-storage-account>.dfs.core.windows.net/bronze"
+  silver_base_path: "abfss://curated@<your-storage-account>.dfs.core.windows.net/silver"
+  gold_base_path: "abfss://curated@<your-storage-account>.dfs.core.windows.net/gold"
+  checkpoint_base_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints"
+  bronze_raw_batch_path: "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/nyc311_service_requests_raw/raw_batches"

@@ -1,10 +1,10 @@
 # Storage Structure
 
-This document describes the current Milestone 9 ADLS layout used by the manual Databricks cloud run. It also calls out where the repo still contains future-state placeholders.
+This document summarizes the shared-filesystem ADLS layout used in the earlier Milestone 9 and 10 Databricks cloud runs. It also notes how the current Milestone 11 proof adds ADF-led raw landing ahead of the Databricks bronze step.
 
-## Current ADLS Layout
+## Shared-Filesystem Dev Layout
 
-The current dev configuration uses a single ADLS Gen2 filesystem or container named `nyc311`. Bronze, silver, gold, and checkpoint paths are all resolved under that filesystem.
+The earlier cloud runs used a single ADLS Gen2 filesystem or container named `nyc311`. Bronze, silver, gold, and checkpoint paths were all resolved under that filesystem.
 
 | Area | Example path | Current use |
 | --- | --- | --- |
@@ -14,6 +14,14 @@ The current dev configuration uses a single ADLS Gen2 filesystem or container na
 | Watermark state | `abfss://nyc311@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state/` | latest incremental extraction watermark |
 | Silver outputs | `abfss://nyc311@<your-storage-account>.dfs.core.windows.net/silver/<table-name>/` | Delta locations for `silver.service_requests_clean` and silver reference tables |
 | Gold outputs | `abfss://nyc311@<your-storage-account>.dfs.core.windows.net/gold/<table-name>/` | Delta locations for dimensions, fact table, and marts |
+
+## Milestone 11 Raw Landing Addition
+
+The current proven Milestone 11 path adds ADF-led raw JSON landing before Databricks bronze processing. In that path, ADF lands a file such as:
+
+`abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/raw/service_requests/ingest_date=YYYY-MM-DD/nyc311_service_requests_<batch_id>.json`
+
+Databricks then receives that landed file path through `raw_landing_path` when `ingestion_mode=adf_landed_raw`.
 
 ## High-Level Folder Shape
 
@@ -45,12 +53,11 @@ nyc311/
 
 ## Important Notes
 
-- the current Milestone 9 run writes Delta tables and watermark state to ADLS
-- the `raw_batches` pattern is currently carried as bronze lineage metadata; the repo does not yet implement a separate raw JSON landing flow in ADLS before bronze table creation
-- this differs from the earlier scaffold that assumed separate `raw`, `curated`, and `logs` filesystems
-- if ADF-led raw landing is implemented later, the storage layout can expand without changing the current bronze, silver, and gold Delta table locations
+- the earlier Milestone 9 and 10 proof writes Delta tables and watermark state to ADLS from Databricks
+- the `raw_batches` pattern remains useful bronze lineage metadata for Databricks-led extraction runs
+- the current Milestone 11 proof separately demonstrates ADF raw landing before the bronze notebook handoff
+- dedicated `raw`, `curated`, and `logs` filesystems remain starter documentation rather than a fully implemented storage layout in this repo
 
 ## Future-State Placeholder Notes
 
-- `infra/adf/` still models a future ingestion handoff path into storage and Databricks
 - dedicated log containers, separate raw and curated filesystems, and stricter environment isolation are not yet implemented in this repo

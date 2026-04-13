@@ -59,7 +59,7 @@ def _open_requests_as_of_snapshot(
         if is_closed and closed_date and closed_date <= snapshot_day:
             continue
 
-        if not is_closed:
+        if (not is_closed) or (closed_date is not None and closed_date > snapshot_day):
             open_rows.append(row)
 
     return open_rows

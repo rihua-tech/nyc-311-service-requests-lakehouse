@@ -81,9 +81,17 @@ def test_build_backlog_snapshot_uses_snapshot_date_logic() -> None:
         {
             "request_id": "1003",
             "created_date": "2024-01-01",
-            "closed_date": "2024-01-02",
+            "closed_date": "2024-01-03",
             "status_name": "Closed",
             "agency_code": "DSNY",
+            "is_closed": True,
+        },
+        {
+            "request_id": "1004",
+            "created_date": "2024-01-01",
+            "closed_date": None,
+            "status_name": "Closed",
+            "agency_code": "DOB",
             "is_closed": True,
         },
     ]
@@ -91,6 +99,12 @@ def test_build_backlog_snapshot_uses_snapshot_date_logic() -> None:
     mart_rows = build_backlog_snapshot(fact_rows, snapshot_date="2024-01-02")
 
     assert mart_rows == [
+        {
+            "snapshot_date": "2024-01-02",
+            "status_name": "Closed",
+            "agency_code": "DSNY",
+            "open_request_count": 1,
+        },
         {
             "snapshot_date": "2024-01-02",
             "status_name": "Open",

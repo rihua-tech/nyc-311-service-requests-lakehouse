@@ -10,9 +10,11 @@ LEFT JOIN gold.dim_status AS s
     ON f.status_sk = s.status_sk
 LEFT JOIN gold.dim_agency AS a
     ON f.agency_sk = a.agency_sk
-WHERE f.is_closed = FALSE
-  AND f.created_date <= CURRENT_DATE()
-  AND (f.closed_date IS NULL OR f.closed_date > CURRENT_DATE())
+WHERE f.created_date <= CURRENT_DATE()
+  AND (
+      f.is_closed = FALSE
+      OR (f.is_closed = TRUE AND f.closed_date IS NOT NULL AND f.closed_date > CURRENT_DATE())
+  )
 GROUP BY
     COALESCE(s.status_name, f.status_name, '<unknown>'),
     COALESCE(a.agency_code, f.agency_code, '<unknown>')
