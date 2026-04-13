@@ -5,60 +5,63 @@
 End-to-end NYC 311 lakehouse pipeline with:
 
 - Bronze -> Silver -> Gold -> Validation implemented in Python + PySpark
-- Working Azure Databricks notebooks plus a real Databricks workflow writing Delta tables to ADLS Gen2
-- Data quality checks and reconciliation across all layers
-- Clear separation between the current Databricks execution path and future ADF orchestration
+- Real ADF REST -> ADLS raw landing plus a Databricks notebook handoff using `ingestion_mode=adf_landed_raw`
+- Earlier Milestone 9 and 10 Databricks notebook and workflow evidence remains valid
+- Final Milestone 11 proof captured in the new workspace `dbw-test-centralus-01`
+- Manual/path-based validation against ADLS-backed Delta outputs for the Milestone 11 closeout
 
 > Azure-first medallion lakehouse for NYC 311 operational analytics.
 
-This repo shows how NYC 311 service request data can move from raw extraction to curated reporting outputs using bronze, silver, and gold layers. The core Python modules for ingestion, transformation, quality checks, and gold modeling are implemented locally. Milestone 9 established a working Azure Databricks + ADLS cloud notebook run, and Milestone 10 adds a real Databricks workflow in Jobs & Pipelines that successfully ran the bronze, silver, gold, and validation flow end to end. ADF orchestration, production-grade monitoring, and Power BI delivery remain future work or scaffolding.
+This repo shows how NYC 311 service request data can move from raw extraction to curated reporting outputs using bronze, silver, and gold layers. The core Python modules for ingestion, transformation, quality checks, and gold modeling are implemented locally. Milestone 9 established a working Azure Databricks + ADLS cloud notebook run, Milestone 10 added a real Databricks workflow in Jobs & Pipelines, and Milestone 11 added a real ADF REST-to-ADLS raw landing plus Databricks notebook handoff. The original Databricks workspace later entered a stale credits-exhausted state after a subscription upgrade, so the final Milestone 11 proof was completed in the new workspace `dbw-test-centralus-01`. Production-grade monitoring, CI/CD, and a finished Power BI delivery layer remain future work.
 
 ## Project Highlights
 
 - implemented bronze, silver, gold, and reusable quality logic in `src/`
 - exported Databricks notebooks that run the medallion flow in cloud against ADLS-backed Delta paths
-- added a real Databricks workflow in Jobs & Pipelines that runs the notebook dependency chain end to end with runtime parameters
-- validated Databricks secret lookups, Unity Catalog access, ADLS read/write, and layer-by-layer outputs
-- kept ADF and the repo-side workflow and cluster JSON files clearly marked as starter deployment assets rather than a production deployment
+- added a real ADF raw landing plus Databricks handoff contract and kept the earlier Databricks workflow evidence
+- validated Databricks secret lookups, catalog access, ADLS read/write, and layer-by-layer outputs across Milestones 9 through 11
+- kept the repo-side ADF and Databricks JSON files clearly marked as starter deployment assets rather than a production deployment
 
 ## Project Card Copy
 
 - Title: NYC 311 Service Requests Lakehouse
 - Subtitle: Azure-first medallion lakehouse for operational analytics
-- Short description: NYC 311 lakehouse project with implemented bronze, silver, gold, and quality logic plus a working Azure Databricks + ADLS execution path backed by a real Databricks workflow.
+- Short description: NYC 311 lakehouse project with implemented bronze, silver, gold, and quality logic plus a real ADF raw landing, Databricks handoff, and earlier Databricks workflow proof.
 - Stack tags: Azure Data Lake Storage Gen2, Azure Databricks, PySpark, Python, Delta Lake, SQL, Power BI, Azure Data Factory
 
 ## GitHub Metadata Suggestions
 
-- About description: Azure-first medallion lakehouse for NYC 311 service request analytics with implemented bronze, silver, gold, and quality logic plus a working Databricks-to-ADLS cloud run backed by a real Databricks workflow.
+- About description: Azure-first medallion lakehouse for NYC 311 service request analytics with implemented bronze, silver, gold, and quality logic plus a real ADF raw landing, Databricks handoff, and earlier Databricks workflow proof.
 - Recommended topics: `azure-data-factory`, `azure-data-lake-storage`, `databricks`, `delta-lake`, `lakehouse`, `medallion-architecture`, `data-engineering`, `dimensional-modeling`, `pyspark`, `power-bi`
 
 ## Project Overview
 
-Current proven Milestone 10 path:
+Current proven Milestone 11 path:
+
+```text
+NYC 311 API
+  -> Azure Data Factory pipeline
+  -> ADLS raw JSON landing
+  -> Databricks notebook handoff
+  -> ADLS Gen2 Delta bronze / silver / gold
+  -> manual/path-based validation
+```
+
+Earlier proven Milestone 9 / 10 path:
 
 ```text
 NYC 311 API
   -> Databricks workflow
   -> Databricks notebooks
   -> ADLS Gen2 Delta bronze / silver / gold
-  -> validation tasks
+  -> validation notebooks
 ```
 
-Planned future orchestration path:
-
-```text
-NYC 311 API
-  -> Azure Data Factory
-  -> Databricks workflow
-  -> Power BI
-```
-
-The goal of the repo is to show an end-to-end lakehouse design while being explicit about what is already running in cloud and what still exists as future work or deployment scaffolding.
+The goal of the repo is to show an end-to-end lakehouse design while being explicit about what is already running in cloud, what was proven in earlier milestones, and what still exists as future work or deployment scaffolding.
 
 ## Architecture Diagram
 
-![NYC 311 lakehouse architecture](docs/architecture/nyc311-lakehouse-architecture.png)
+![NYC 311 lakehouse architecture](docs/screenshots/milestone-11/m11_end_to_end_architecture.png)
 
 A larger version and supporting notes are available in [docs/architecture/architecture-diagram.md](docs/architecture/architecture-diagram.md).
 
@@ -80,9 +83,9 @@ NYC 311 data is operationally valuable because it reflects how city services are
 | Databricks notebooks | Implemented and cloud verified | `databricks/notebooks/` runs the bronze, silver, gold, and validation flow in Azure Databricks and remains the notebook logic executed by the workflow |
 | ADLS Gen2 pathing and Delta writes | Implemented and cloud verified | runtime config resolves ABFSS paths and the notebooks write Delta-backed outputs to ADLS |
 | Secret-driven storage access | Implemented and cloud verified | Databricks setup notebooks validate a secret scope and configure ADLS access without exposing values |
-| Validation notebooks | Implemented and cloud verified | bronze, silver, and gold validation notebooks fail fast on quality or reconciliation issues |
-| Databricks workflow | Implemented and verified in workspace | a real Databricks workflow has successfully run end to end in Jobs & Pipelines using `environment` and `run_date`; the repo JSON remains a starter deployment asset rather than a full deployment system |
-| ADF orchestration | Scaffolded | `infra/adf/` remains a design and handoff template, not the path used for the current Milestone 10 run |
+| Validation notebooks | Implemented with Milestone-specific proof | the legacy validation notebooks remain in the repo and were proven in earlier Databricks runs; the final Milestone 11 closeout used manual/path-based validation against ADLS-backed Delta data because the legacy notebooks expected registered metastore tables in `spark_catalog` |
+| Databricks workflow | Implemented and verified in the original workspace | a real Databricks workflow successfully ran end to end in Jobs & Pipelines for Milestone 10; that earlier evidence remains valid even though the final Milestone 11 proof moved to `dbw-test-centralus-01` after the original workspace entered a stale credits-exhausted state |
+| ADF orchestration | Implemented for raw landing and notebook handoff | ADF now performs the real REST -> ADLS raw landing and triggers the Databricks bronze handoff; the repo JSON still serves as starter deployment documentation rather than a full export or IaC package |
 | Power BI delivery | Scaffolded | the repo models Power BI as a downstream consumer but does not include a finished report package |
 
 ## What Is Implemented
@@ -95,7 +98,7 @@ NYC 311 data is operationally valuable because it reflects how city services are
 - [src/quality/](src/quality/): reusable validation helpers for nulls, duplicates, schema checks, and row counts
 - [src/transformation/gold_dimensions.py](src/transformation/gold_dimensions.py), [src/transformation/gold_facts.py](src/transformation/gold_facts.py), and [src/transformation/gold_marts.py](src/transformation/gold_marts.py): gold modeling helpers
 - [src/common/databricks_runtime.py](src/common/databricks_runtime.py): widget handling, ABFSS path resolution, catalog validation, schema creation, and ADLS access setup
-- [databricks/notebooks/](databricks/notebooks/): Databricks notebook exports used for the Milestone 9 cloud notebook run and the Milestone 10 workflow
+- [databricks/notebooks/](databricks/notebooks/): Databricks notebook exports used for the Milestone 9 cloud notebook run, the Milestone 10 workflow, and the Milestone 11 ADF handoff
 
 ## Milestone 9 - Foundation: real cloud execution in ADLS + Databricks
 
@@ -131,7 +134,7 @@ Milestone 9 established the first working cloud notebook path in Azure Databrick
 - an Azure Databricks workspace for notebook execution
 - Unity Catalog for the active catalog and bronze, silver, and gold schemas
 - a Databricks secret scope for ADLS credentials
-- ADF definitions remain in the repo, but they are not the component driving the current Milestone 10 run
+- this was the Milestone 9 / 10 execution shape; Milestone 11 later adds ADF raw landing and Databricks handoff
 
 ### ADLS path structure at a high level
 
@@ -139,7 +142,7 @@ Milestone 9 established the first working cloud notebook path in Azure Databrick
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/silver/` for the cleaned silver table and silver reference tables
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/gold/` for dimensions, fact, and marts
 - `abfss://nyc311@<storage-account>.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state/` for incremental watermark persistence
-- `bronze/.../raw_batches/...` is currently used as lineage metadata in the bronze `file_path` column; the current implementation writes Delta tables and watermark state rather than a separate ADF raw-file landing flow
+- `bronze/.../raw_batches/...` remains lineage metadata for the Databricks-managed API extract mode, while Milestone 11 adds a separate ADF raw landing path under `abfss://raw@<storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=<run_date>/`
 
 More detail is in [infra/azure/storage-structure.md](infra/azure/storage-structure.md).
 
@@ -205,10 +208,36 @@ Existing Milestone 9 evidence is already stored under [docs/screenshots/mileston
 
 ### What is still future work or still scaffolded
 
-- ADF-triggered ingestion and orchestration from `infra/adf/`
+- a hardened deployment story for ADF and Databricks assets beyond the repo-side starter JSON files
 - production-grade cluster policies, CI/CD, monitoring, alerting, and infrastructure-as-code
 - a hardened backfill and replay operating model beyond manual notebook reruns
 - Power BI assets beyond architecture and downstream-consumer placeholders
+
+## Milestone 11 - ADF raw landing and Databricks handoff
+
+### What became real in this milestone
+
+- ADF now performs the real NYC 311 REST extraction and lands raw JSON to ADLS
+- the ADF pipeline then triggers the Databricks bronze handoff notebook with `ingestion_mode=adf_landed_raw`
+- the raw landing path pattern is `abfss://raw@<storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=<run_date>/nyc311_service_requests_<batch_id>.json`
+- the handoff contract uses `environment`, `catalog`, `run_date`, `batch_id`, `window_start`, `window_end`, `ingestion_mode`, and `raw_landing_path`
+- earlier Milestone 9 and 10 evidence from the original workspace remains valid
+- the original workspace later entered a stale credits-exhausted state after a subscription upgrade, so the final Milestone 11 proof was completed in the new workspace `dbw-test-centralus-01`
+- the final Milestone 11 validation in the new workspace was completed with manual/path-based verification against ADLS-backed Delta data because the legacy validation notebooks expected registered metastore tables in `spark_catalog`
+
+### ADF and Databricks handoff notes
+
+- linked service names in the repo-side starter assets are `ls_nyc311_http`, `ls_adls_nyc311`, and `ls_databricks_nyc311`
+- ADF pipeline parameters are `environment`, `catalog`, `run_date`, `window_start`, `window_end`, `page_size`, and `batch_id`
+- the Databricks notebook mapping keeps `ingestion_mode=adf_landed_raw` constant and derives `raw_landing_path` from the `run_date`
+- ADF owns the source extraction window and raw landing, while Databricks owns downstream Delta outputs and lakehouse-side checkpoint or watermark handling after the handoff
+
+### Milestone 11 evidence
+
+- ADF pipeline and run screenshots: `docs/screenshots/milestone-11/m11_adf_pipeline_canvas.png` and `docs/screenshots/milestone-11/m11_adf_run_success.png`
+- Databricks handoff and bronze receipt screenshots: `docs/screenshots/milestone-11/m11_adf_to_databricks_handoff.png`, `docs/screenshots/milestone-11/m11_databricks_run_success.png`, and `docs/screenshots/milestone-11/m11_bronze_received_batch.png`
+- raw landing, watermark, gold, and validation screenshots: `docs/screenshots/milestone-11/m11_adls_raw_landing.png`, `docs/screenshots/milestone-11/m11_watermark_state.png`, `docs/screenshots/milestone-11/m11_gold_outputs.png`, and `docs/screenshots/milestone-11/m11_validation_passed.png`
+- end-to-end architecture screenshot: `docs/screenshots/milestone-11/m11_end_to_end_architecture.png`
 
 ## Gold Outputs And Marts
 
@@ -269,7 +298,7 @@ make test
 
 Notes:
 
-- the notebook files are `.py` exports of the Databricks notebooks used in the Milestone 9 cloud run and the Milestone 10 workflow
+- the notebook files are `.py` exports of the Databricks notebooks used in the Milestone 9 cloud run, the Milestone 10 workflow, and the Milestone 11 handoff
 - local tests validate the Python helper surface, not a live Spark or Azure workspace
 - the repo currently uses `PyYAML` and `pytest` for local support and tests
 - keep secret values out of source control; only secret names and non-sensitive runtime config belong in checked-in files

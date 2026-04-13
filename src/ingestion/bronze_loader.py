@@ -55,11 +55,12 @@ def prepare_bronze_batch(
     source_system: str = SOURCE_SYSTEM,
     api_pull_timestamp: str | None = None,
     ingest_timestamp: datetime | None = None,
+    batch_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Prepare a bronze batch with shared load metadata."""
     resolved_ingest_timestamp = ingest_timestamp or datetime.now(timezone.utc)
-    batch_id = str(uuid4())
-    file_path = build_bronze_file_path(bronze_base_path, resolved_ingest_timestamp, batch_id)
+    resolved_batch_id = str(batch_id).strip() if batch_id else str(uuid4())
+    file_path = build_bronze_file_path(bronze_base_path, resolved_ingest_timestamp, resolved_batch_id)
 
     return [
         build_bronze_record(

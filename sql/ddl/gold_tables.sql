@@ -1,4 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS gold;
+-- Replace <storage-account> with the target ADLS account before running this DDL in Databricks.
+CREATE SCHEMA IF NOT EXISTS gold
+LOCATION 'abfss://curated@<storage-account>.dfs.core.windows.net/gold';
 
 CREATE TABLE IF NOT EXISTS gold.dim_date (
     date_key INT COMMENT 'Calendar date key in YYYYMMDD form.',

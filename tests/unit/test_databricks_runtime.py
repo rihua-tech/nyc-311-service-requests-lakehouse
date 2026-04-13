@@ -5,6 +5,7 @@ from src.common import databricks_runtime as runtime
 from src.common.databricks_runtime import (
     build_abfss_uri,
     configure_adls_service_principal_access,
+    ensure_catalog_and_schemas,
     resolve_runtime_config,
     validate_catalog_access,
     write_delta_table,
@@ -22,6 +23,8 @@ def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
 
     assert config["azure"]["storage_account"] == "nyc311adlsg22026"
     assert config["azure"]["container"] == "nyc311"
+    assert config["azure"]["raw_container"] == "nyc311"
+    assert config["azure"]["curated_container"] == "nyc311"
     assert config["databricks"]["catalog"] == "workspace_catalog"
     assert config["paths"]["bronze_base_path"].endswith("/bronze")
     assert config["paths"]["silver_base_path"].endswith("/silver")
@@ -35,6 +38,51 @@ def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
 
     for table_name in GOLD_TABLES.values():
         assert config["paths"]["table_paths"][table_name].startswith(config["paths"]["gold_base_path"])
+
+
+def test_resolve_runtime_config_separates_raw_and_curated_default_paths() -> None:
+    config = resolve_runtime_config("prod")
+
+    assert config["azure"]["raw_container"] == "raw"
+    assert config["azure"]["curated_container"] == "curated"
+    assert config["azure"]["container"] == "curated"
+    assert config["paths"]["bronze_raw_batch_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/nyc311_service_requests_raw/raw_batches"
+    )
+    assert config["paths"]["checkpoint_base_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints"
+    )
+    assert config["source"]["watermark_state_path"].startswith(
+        "abfss://raw@<your-storage-account>.dfs.core.windows.net/bronze/checkpoints/nyc311_service_requests/watermark_state"
+    )
+    assert config["paths"]["bronze_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/bronze")
+    assert config["paths"]["silver_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/silver")
+    assert config["paths"]["gold_base_path"].startswith("abfss://curated@<your-storage-account>.dfs.core.windows.net/gold")
+    assert config["paths"]["table_paths"][BRONZE_TABLE].startswith(config["paths"]["bronze_base_path"])
+    assert config["paths"]["table_paths"][SILVER_TABLE].startswith(config["paths"]["silver_base_path"])
+
+
+def test_resolve_runtime_config_applies_ingestion_contract_overrides() -> None:
+    config = resolve_runtime_config(
+        "dev",
+        overrides={
+            "run_date": "2024-01-02",
+            "ingestion_mode": "adf_landed_raw",
+            "raw_landing_path": "abfss://raw@storage.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=2024-01-02/",
+            "batch_id": "adf-202401020115",
+            "window_start": "2024-01-02T00:00:00",
+            "window_end": "2024-01-03T00:00:00",
+        },
+    )
+
+    assert config["runtime"] == {
+        "run_date": "2024-01-02",
+        "ingestion_mode": "adf_landed_raw",
+        "raw_landing_path": "abfss://raw@storage.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=2024-01-02/",
+        "batch_id": "adf-202401020115",
+        "window_start": "2024-01-02T00:00:00",
+        "window_end": "2024-01-03T00:00:00",
+    }
 
 
 def test_validate_catalog_access_raises_clear_error_for_missing_catalog() -> None:
@@ -88,6 +136,51 @@ def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> Non
 
     assert resolved_catalog == "dbw_nyc311_lakehouse_central"
     assert config["databricks"]["catalog"] == "dbw_nyc311_lakehouse_central"
+
+
+def test_ensure_catalog_and_schemas_uses_explicit_schema_locations() -> None:
+    queries: list[str] = []
+
+    class FakeSpark:
+        class _CatalogsResult:
+            def collect(self) -> list[tuple[str]]:
+                return [("spark_catalog",)]
+
+        class _Result:
+            def collect(self) -> list[tuple[str]]:
+                return []
+
+        def sql(self, query: str) -> "FakeSpark._CatalogsResult | FakeSpark._Result":
+            queries.append(query)
+            if query == "SHOW CATALOGS":
+                return self._CatalogsResult()
+            return self._Result()
+
+    ensure_catalog_and_schemas(
+        FakeSpark(),
+        {
+            "environment": "prod",
+            "databricks": {
+                "catalog": "spark_catalog",
+                "bronze_schema": "bronze",
+                "silver_schema": "silver",
+                "gold_schema": "gold",
+            },
+            "paths": {
+                "bronze_base_path": "abfss://curated@account.dfs.core.windows.net/bronze",
+                "silver_base_path": "abfss://curated@account.dfs.core.windows.net/silver",
+                "gold_base_path": "abfss://curated@account.dfs.core.windows.net/gold",
+            },
+        },
+    )
+
+    assert queries == [
+        "SHOW CATALOGS",
+        "USE CATALOG `spark_catalog`",
+        "CREATE SCHEMA IF NOT EXISTS `bronze` LOCATION 'abfss://curated@account.dfs.core.windows.net/bronze'",
+        "CREATE SCHEMA IF NOT EXISTS `silver` LOCATION 'abfss://curated@account.dfs.core.windows.net/silver'",
+        "CREATE SCHEMA IF NOT EXISTS `gold` LOCATION 'abfss://curated@account.dfs.core.windows.net/gold'",
+    ]
 
 
 def test_bootstrap_notebook_can_skip_catalog_setup(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,4 +1,6 @@
-CREATE SCHEMA IF NOT EXISTS silver;
+-- Replace <storage-account> with the target ADLS account before running this DDL in Databricks.
+CREATE SCHEMA IF NOT EXISTS silver
+LOCATION 'abfss://curated@<storage-account>.dfs.core.windows.net/silver';
 
 CREATE TABLE IF NOT EXISTS silver.service_requests_clean (
     request_id STRING COMMENT 'Business key derived from the NYC 311 unique request id.',

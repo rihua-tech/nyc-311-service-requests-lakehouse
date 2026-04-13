@@ -12,6 +12,11 @@ BASE_WIDGET_DEFAULTS = {
     "environment": "dev",
     "catalog": "",
     "run_date": "",
+    "ingestion_mode": "api_extract",
+    "raw_landing_path": "",
+    "batch_id": "",
+    "window_start": "",
+    "window_end": "",
     "secret_scope": "",
     "sp_client_id_key": "",
     "sp_client_secret_key": "",
@@ -30,6 +35,14 @@ def build_abfss_uri(filesystem: str, storage_account: str, *parts: str) -> str:
 
 def _table_path(base_path: str, table_name: str) -> str:
     return f"{base_path.rstrip('/')}/{table_name.split('.')[-1]}"
+
+
+def _first_non_blank(*values: Any) -> str | None:
+    for value in values:
+        resolved = str(value).strip() if value is not None else ""
+        if resolved:
+            return resolved
+    return None
 
 
 def quote_identifier(identifier: str) -> str:
@@ -71,6 +84,31 @@ def infer_unambiguous_catalog(available_catalogs: Sequence[str]) -> str | None:
     return candidates[0] if len(candidates) == 1 else None
 
 
+def _resolve_storage_filesystems(azure: Mapping[str, Any]) -> tuple[str, str]:
+    shared_filesystem = _first_non_blank(azure.get("container"), azure.get("filesystem"))
+    raw_filesystem = _first_non_blank(
+        azure.get("raw_container"),
+        azure.get("raw_filesystem"),
+        shared_filesystem,
+        azure.get("curated_container"),
+        azure.get("curated_filesystem"),
+    )
+    curated_filesystem = _first_non_blank(
+        azure.get("curated_container"),
+        azure.get("curated_filesystem"),
+        shared_filesystem,
+        raw_filesystem,
+    )
+
+    if not raw_filesystem or not curated_filesystem:
+        raise ValueError(
+            "Environment config must define azure.storage_account and either a shared "
+            "azure.container/filesystem or raw and curated container/filesystem values."
+        )
+
+    return raw_filesystem, curated_filesystem
+
+
 def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
     resolved = deepcopy(config)
     if not overrides:
@@ -78,13 +116,24 @@ def _apply_widget_overrides(config: dict[str, Any], overrides: Mapping[str, Any]
 
     source = resolved.setdefault("source", {})
     databricks = resolved.setdefault("databricks", {})
+    runtime = resolved.setdefault("runtime", {})
 
     if overrides.get("page_size") is not None:
         source["page_size"] = int(overrides["page_size"])
     if overrides.get("max_pages_per_run") is not None:
         source["max_pages_per_run"] = int(overrides["max_pages_per_run"])
     if overrides.get("run_date") is not None:
-        resolved.setdefault("runtime", {})["run_date"] = overrides["run_date"]
+        runtime["run_date"] = str(overrides["run_date"]).strip()
+    if overrides.get("ingestion_mode") is not None:
+        runtime["ingestion_mode"] = str(overrides["ingestion_mode"]).strip()
+    if overrides.get("raw_landing_path") is not None:
+        runtime["raw_landing_path"] = str(overrides["raw_landing_path"]).strip()
+    if overrides.get("batch_id") is not None:
+        runtime["batch_id"] = str(overrides["batch_id"]).strip()
+    if overrides.get("window_start") is not None:
+        runtime["window_start"] = str(overrides["window_start"]).strip()
+    if overrides.get("window_end") is not None:
+        runtime["window_end"] = str(overrides["window_end"]).strip()
     if overrides.get("secret_scope"):
         databricks["secret_scope"] = str(overrides["secret_scope"])
     if overrides.get("catalog") is not None:
@@ -102,25 +151,29 @@ def resolve_runtime_config(
 
     azure = config.setdefault("azure", {})
     databricks = config.setdefault("databricks", {})
+    runtime = config.setdefault("runtime", {})
     source = config.setdefault("source", {})
     paths = config.setdefault("paths", {})
 
     storage_account = azure.get("storage_account")
-    filesystem = azure.get("container") or azure.get("filesystem") or azure.get("raw_container") or azure.get("curated_container")
-    if not storage_account or not filesystem:
-        raise ValueError("Environment config must define azure.storage_account and azure.container/filesystem.")
+    raw_filesystem, curated_filesystem = _resolve_storage_filesystems(azure)
+    if not storage_account:
+        raise ValueError(
+            "Environment config must define azure.storage_account and either a shared "
+            "azure.container/filesystem or raw and curated container/filesystem values."
+        )
 
-    bronze_base_path = paths.get("bronze_base_path") or build_abfss_uri(filesystem, storage_account, "bronze")
-    silver_base_path = paths.get("silver_base_path") or build_abfss_uri(filesystem, storage_account, "silver")
-    gold_base_path = paths.get("gold_base_path") or build_abfss_uri(filesystem, storage_account, "gold")
+    bronze_base_path = paths.get("bronze_base_path") or build_abfss_uri(curated_filesystem, storage_account, "bronze")
+    silver_base_path = paths.get("silver_base_path") or build_abfss_uri(curated_filesystem, storage_account, "silver")
+    gold_base_path = paths.get("gold_base_path") or build_abfss_uri(curated_filesystem, storage_account, "gold")
     checkpoint_base_path = paths.get("checkpoint_base_path") or build_abfss_uri(
-        filesystem,
+        raw_filesystem,
         storage_account,
         "bronze",
         "checkpoints",
     )
     bronze_raw_batch_path = paths.get("bronze_raw_batch_path") or build_abfss_uri(
-        filesystem,
+        raw_filesystem,
         storage_account,
         "bronze",
         "nyc311_service_requests_raw",
@@ -130,7 +183,7 @@ def resolve_runtime_config(
     watermark_state_path = source.get("watermark_state_path")
     if not watermark_state_path or str(watermark_state_path).startswith("local_state/"):
         watermark_state_path = build_abfss_uri(
-            filesystem,
+            raw_filesystem,
             storage_account,
             "bronze",
             "checkpoints",
@@ -155,9 +208,17 @@ def resolve_runtime_config(
         }
     )
 
-    azure["container"] = filesystem
+    azure["raw_container"] = raw_filesystem
+    azure["curated_container"] = curated_filesystem
+    azure["container"] = _first_non_blank(azure.get("container"), azure.get("filesystem"), curated_filesystem)
     databricks.setdefault("secret_scope", "adls-sp")
     databricks["catalog"] = str(databricks.get("catalog") or "").strip()
+    runtime["run_date"] = str(runtime.get("run_date") or "").strip()
+    runtime["ingestion_mode"] = str(runtime.get("ingestion_mode") or "api_extract").strip() or "api_extract"
+    runtime["raw_landing_path"] = str(runtime.get("raw_landing_path") or "").strip()
+    runtime["batch_id"] = str(runtime.get("batch_id") or "").strip()
+    runtime["window_start"] = str(runtime.get("window_start") or "").strip()
+    runtime["window_end"] = str(runtime.get("window_end") or "").strip()
     paths.update(
         {
             "bronze_base_path": bronze_base_path,
@@ -246,7 +307,7 @@ def configure_adls_service_principal_access(
 
 
 def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
-    """Validate that the configured Unity Catalog catalog exists and is accessible."""
+    """Validate that the configured catalog exists and is accessible."""
     databricks = config.get("databricks", {})
     environment = str(config.get("environment", "<unknown>"))
     catalog = str(databricks.get("catalog") or "").strip()
@@ -267,7 +328,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
     if not catalog:
         visible_catalogs = ", ".join(sorted(available_catalogs)) if available_catalogs else "<none returned>"
         raise ValueError(
-            "No Unity Catalog catalog is configured. Set databricks.catalog in "
+            "No catalog is configured. Set databricks.catalog in "
             f"config/{environment}.yaml or notebook widget 'catalog' to the catalog you can use for this workspace. "
             f"Visible catalogs from this session: {visible_catalogs}"
         )
@@ -276,7 +337,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
         visible_catalogs = ", ".join(sorted(available_catalogs))
         raise ValueError(
             f"Configured databricks.catalog='{catalog}' is not visible to this workspace principal or cluster. "
-            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a Unity Catalog "
+            f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a "
             f"catalog you can actually USE in this workspace. Visible catalogs: {visible_catalogs}"
         )
 
@@ -284,7 +345,7 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
         spark.sql(f"USE CATALOG {quote_identifier(catalog)}")
     except Exception as exc:
         raise ValueError(
-            f"Configured databricks.catalog='{catalog}' could not be activated in this Unity Catalog workspace. "
+            f"Configured databricks.catalog='{catalog}' could not be activated in this workspace. "
             f"Set databricks.catalog in config/{environment}.yaml or notebook widget 'catalog' to a catalog "
             "that exists and is accessible to the current Databricks user/cluster."
         ) from exc
@@ -293,18 +354,23 @@ def validate_catalog_access(spark: Any, config: Mapping[str, Any]) -> str:
 
 
 def ensure_catalog_and_schemas(spark: Any, config: Mapping[str, Any]) -> None:
-    """Set the active catalog and create the bronze, silver, and gold schemas."""
+    """Set the active catalog and create the bronze, silver, and gold schemas with explicit locations."""
     databricks = config.get("databricks", {})
-    catalog = validate_catalog_access(spark, config)
+    paths = config.get("paths", {})
+    validate_catalog_access(spark, config)
 
-    for schema_name in (
-        databricks.get("bronze_schema", "bronze"),
-        databricks.get("silver_schema", "silver"),
-        databricks.get("gold_schema", "gold"),
+    for schema_name, schema_path in (
+        (databricks.get("bronze_schema", "bronze"), paths.get("bronze_base_path")),
+        (databricks.get("silver_schema", "silver"), paths.get("silver_base_path")),
+        (databricks.get("gold_schema", "gold"), paths.get("gold_base_path")),
     ):
         if schema_name:
+            if not schema_path:
+                raise ValueError(f"No storage location is configured for schema {schema_name!r}.")
             spark.sql(
-                f"CREATE SCHEMA IF NOT EXISTS {quote_identifier(catalog)}.{quote_identifier(str(schema_name))}"
+                "CREATE SCHEMA IF NOT EXISTS "
+                f"{quote_identifier(str(schema_name))} "
+                f"LOCATION '{_escape_sql_string(str(schema_path))}'"
             )
 
 
@@ -361,6 +427,11 @@ def bootstrap_notebook(
     overrides = {
         "catalog": get_widget(dbutils, "catalog", default=""),
         "run_date": get_widget(dbutils, "run_date", default=""),
+        "ingestion_mode": get_widget(dbutils, "ingestion_mode", default="api_extract"),
+        "raw_landing_path": get_widget(dbutils, "raw_landing_path", default=""),
+        "batch_id": get_widget(dbutils, "batch_id", default=""),
+        "window_start": get_widget(dbutils, "window_start", default=""),
+        "window_end": get_widget(dbutils, "window_end", default=""),
         "secret_scope": get_widget(dbutils, "secret_scope", default=""),
         "page_size": get_widget_int(dbutils, "page_size"),
         "max_pages_per_run": get_widget_int(dbutils, "max_pages_per_run"),

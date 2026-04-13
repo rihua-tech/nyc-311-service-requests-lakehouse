@@ -34,3 +34,16 @@ def test_prepare_bronze_batch_applies_shared_batch_metadata() -> None:
     assert rows[0]["file_path"] == rows[1]["file_path"]
     assert rows[0]["source_record_id"] == "1001"
     assert rows[1]["source_record_id"] == "1002"
+
+
+def test_prepare_bronze_batch_uses_explicit_batch_id_when_provided() -> None:
+    ingest_timestamp = datetime(2024, 1, 2, 9, 30, tzinfo=timezone.utc)
+
+    rows = prepare_bronze_batch(
+        records=[{"unique_key": "1001"}],
+        bronze_base_path="abfss://raw@storage.dfs.core.windows.net/nyc311/service_requests/raw/",
+        ingest_timestamp=ingest_timestamp,
+        batch_id="adf-202401020115",
+    )
+
+    assert rows[0]["file_path"].endswith("/ingest_date=2024-01-02/batch_adf-202401020115.json")

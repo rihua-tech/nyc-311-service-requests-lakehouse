@@ -14,7 +14,12 @@
   },
   "shared_parameters": {
     "environment": "<env>",
-    "run_date": "<yyyy-mm-dd>"
+    "run_date": "<yyyy-mm-dd>",
+    "ingestion_mode": "api_extract",
+    "raw_landing_path": "",
+    "batch_id": "",
+    "window_start": "",
+    "window_end": ""
   },
   "execution_stages": [
     {

@@ -5,7 +5,7 @@
       "type": "RestResource",
       "linkedServiceName": "ls_nyc311_http",
       "properties": {
-        "description": "Placeholder source dataset for NYC 311 service request extraction.",
+        "description": "Starter source dataset for the NYC 311 service request extraction used by the Milestone 11 raw landing flow.",
         "relativeUrl": "/resource/erm2-nwe9.json",
         "format": "Json"
       }
@@ -15,7 +15,7 @@
       "type": "Json",
       "linkedServiceName": "ls_adls_nyc311",
       "properties": {
-        "description": "Placeholder sink dataset for raw NYC 311 payload landing in the bronze zone.",
+        "description": "Starter sink dataset for the Milestone 11 raw JSON landing in the ADLS raw filesystem.",
         "location": {
           "fileSystem": "raw",
           "folderPath": "nyc311/service_requests/raw/ingest_date=@{dataset().ingest_date}",
@@ -39,7 +39,7 @@
       "type": "Json",
       "linkedServiceName": "ls_adls_nyc311",
       "properties": {
-        "description": "Optional placeholder dataset for per-run handoff metadata that downstream Databricks jobs can read after raw landing.",
+        "description": "Optional starter dataset for per-run handoff metadata that downstream Databricks jobs can read after raw landing.",
         "location": {
           "fileSystem": "raw",
           "folderPath": "nyc311/service_requests/checkpoints/adf_handoff/run_date=@{dataset().run_date}",
