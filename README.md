@@ -4,13 +4,15 @@ Azure-first medallion lakehouse portfolio project for NYC 311 operational analyt
 
 **Tech stack:** Azure Data Factory, Azure Data Lake Storage Gen2, Azure Databricks, PySpark, Delta Lake, Python, SQL, Power BI
 
+![CI](https://github.com/rihua-tech/nyc-311-service-requests-lakehouse/actions/workflows/ci.yml/badge.svg)
+
 ## Architecture Diagram
 
 ![NYC 311 lakehouse architecture](docs/screenshots/milestone-11/m11_end_to_end_architecture.png)
 
 Larger view and supporting notes: [docs/architecture/architecture-diagram.md](docs/architecture/architecture-diagram.md).
 
-##  Quick Proof Summary
+## gi Quick Proof Summary
 
 - `src/` implements the core local pipeline logic for extraction, bronze loading, silver cleaning, reusable quality checks, and gold modeling.
 - Cloud proof exists across three milestones: Milestone 9 verified Databricks + ADLS notebook execution, Milestone 10 verified a real Databricks workflow, and Milestone 11 verified a real ADF REST -> ADLS raw landing plus Databricks notebook handoff.

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nyc-311-service-requests-lakehouse"
 version = "0.1.0"
-description = "Scaffold-first Azure and Databricks lakehouse project for NYC 311 operational analytics."
+description = "Azure-first medallion lakehouse project for NYC 311 operational analytics with ADF, ADLS Gen2, Databricks, PySpark, Delta Lake, and data quality checks."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
