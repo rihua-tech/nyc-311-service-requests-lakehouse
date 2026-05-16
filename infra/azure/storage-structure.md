@@ -19,7 +19,7 @@ The earlier cloud runs used a single ADLS Gen2 filesystem or container named `ny
 
 The current proven Milestone 11 path adds ADF-led raw JSON landing before Databricks bronze processing. In that path, ADF lands a file such as:
 
-`abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/raw/service_requests/ingest_date=YYYY-MM-DD/nyc311_service_requests_<batch_id>.json`
+`abfss://raw@<your-storage-account>.dfs.core.windows.net/nyc311/service_requests/raw/ingest_date=YYYY-MM-DD/nyc311_service_requests_<batch_id>.json`
 
 Databricks then receives that landed file path through `raw_landing_path` when `ingestion_mode=adf_landed_raw`.
 

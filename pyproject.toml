@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0,<9.0",
+  "ruff>=0.8.0,<1.0",
 ]
 
 [tool.pytest.ini_options]
@@ -22,3 +23,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q"
 
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+  ".pytest_tmp",
+  "_pytest_tmp_targeted",
+  "pytest-cache-files-*",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"databricks/notebooks/**/*.py" = ["F821"]

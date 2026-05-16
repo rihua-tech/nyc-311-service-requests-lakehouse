@@ -16,6 +16,18 @@ def _clean_text(value: Any) -> str | None:
     return text or None
 
 
+def _normalize_value(value: Any) -> Any:
+    return _clean_text(value) if isinstance(value, str) else value
+
+
+def _is_earlier_date(candidate: Any, current: Any) -> bool:
+    if candidate in (None, ""):
+        return False
+    if current in (None, ""):
+        return True
+    return str(candidate) < str(current)
+
+
 def _unique_reference_rows(
     records: Iterable[dict[str, Any]],
     business_fields: list[str],
@@ -27,13 +39,19 @@ def _unique_reference_rows(
     load_timestamp = utc_now_iso()
 
     for record in records:
-        key = tuple(_clean_text(record.get(field)) if isinstance(record.get(field), str) else record.get(field) for field in business_fields)
-        if key and key[0] not in (None, "") and key not in seen:
-            seen[key] = {
-                field: _clean_text(record.get(field)) if isinstance(record.get(field), str) else record.get(field)
-                for field in selected_fields
-            }
+        key = tuple(_normalize_value(record.get(field)) for field in business_fields)
+        if not key or key[0] in (None, ""):
+            continue
+
+        normalized_row = {field: _normalize_value(record.get(field)) for field in selected_fields}
+        if key not in seen:
+            seen[key] = normalized_row
             seen[key]["load_timestamp"] = load_timestamp
+        elif "created_date" in selected_fields and _is_earlier_date(
+            normalized_row.get("created_date"),
+            seen[key].get("created_date"),
+        ):
+            seen[key]["created_date"] = normalized_row["created_date"]
     return list(seen.values())
 
 

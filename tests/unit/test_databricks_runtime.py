@@ -13,23 +13,25 @@ from src.common.databricks_runtime import (
 
 
 def test_build_abfss_uri_joins_parts_cleanly() -> None:
-    uri = build_abfss_uri("nyc311", "nyc311adlsg22026", "bronze", "service_requests")
+    uri = build_abfss_uri("nyc311", "storageacct", "bronze", "service_requests")
 
-    assert uri == "abfss://nyc311@nyc311adlsg22026.dfs.core.windows.net/bronze/service_requests"
+    assert uri == "abfss://nyc311@storageacct.dfs.core.windows.net/bronze/service_requests"
 
 
 def test_resolve_runtime_config_derives_manual_cloud_paths() -> None:
     config = resolve_runtime_config("dev", overrides={"catalog": "workspace_catalog"})
 
-    assert config["azure"]["storage_account"] == "nyc311adlsg22026"
-    assert config["azure"]["container"] == "nyc311"
-    assert config["azure"]["raw_container"] == "nyc311"
-    assert config["azure"]["curated_container"] == "nyc311"
+    assert config["azure"]["storage_account"] == "YOUR_STORAGE_ACCOUNT"
+    assert config["azure"]["container"] == "YOUR_CONTAINER"
+    assert config["azure"]["raw_container"] == "YOUR_CONTAINER"
+    assert config["azure"]["curated_container"] == "YOUR_CONTAINER"
     assert config["databricks"]["catalog"] == "workspace_catalog"
     assert config["paths"]["bronze_base_path"].endswith("/bronze")
     assert config["paths"]["silver_base_path"].endswith("/silver")
     assert config["paths"]["gold_base_path"].endswith("/gold")
-    assert config["source"]["watermark_state_path"].startswith("abfss://nyc311@nyc311adlsg22026")
+    assert config["source"]["watermark_state_path"].startswith(
+        "abfss://YOUR_CONTAINER@YOUR_STORAGE_ACCOUNT"
+    )
     assert config["paths"]["table_paths"][BRONZE_TABLE].endswith("/nyc311_service_requests_raw")
     assert config["paths"]["table_paths"][SILVER_TABLE].endswith("/service_requests_clean")
 
@@ -112,7 +114,7 @@ def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> Non
     class FakeSpark:
         class _CatalogsResult:
             def collect(self) -> list[tuple[str]]:
-                return [("dbw_nyc311_lakehouse_central",), ("samples",), ("system",)]
+                return [("workspace_catalog",), ("samples",), ("system",)]
 
         class _UseCatalogResult:
             def collect(self) -> list[tuple[str]]:
@@ -121,7 +123,7 @@ def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> Non
         def sql(self, query: str) -> "FakeSpark._CatalogsResult | FakeSpark._UseCatalogResult":
             if query == "SHOW CATALOGS":
                 return self._CatalogsResult()
-            if query == "USE CATALOG `dbw_nyc311_lakehouse_central`":
+            if query == "USE CATALOG `workspace_catalog`":
                 return self._UseCatalogResult()
             raise AssertionError(f"Unexpected query: {query}")
 
@@ -134,8 +136,8 @@ def test_validate_catalog_access_auto_selects_single_non_system_catalog() -> Non
 
     resolved_catalog = validate_catalog_access(FakeSpark(), config)
 
-    assert resolved_catalog == "dbw_nyc311_lakehouse_central"
-    assert config["databricks"]["catalog"] == "dbw_nyc311_lakehouse_central"
+    assert resolved_catalog == "workspace_catalog"
+    assert config["databricks"]["catalog"] == "workspace_catalog"
 
 
 def test_ensure_catalog_and_schemas_uses_explicit_schema_locations() -> None:
@@ -426,7 +428,7 @@ def test_configure_adls_service_principal_access_skips_unavailable_serverless_co
     configure_adls_service_principal_access(
         spark=FakeSpark(),
         dbutils=FakeDbutils(),
-        storage_account="nyc311adlsg22026",
+        storage_account="storageacct",
         secret_scope="adls-sp",
         client_id_key="client-id",
         client_secret_key="client-secret",

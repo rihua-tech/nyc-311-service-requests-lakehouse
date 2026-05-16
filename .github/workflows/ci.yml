@@ -30,6 +30,9 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: Run Ruff
+        run: python -m ruff check .
+
       - name: Validate JSON files
         run: |
           python -m json.tool infra/adf/linked_services.json > /dev/null

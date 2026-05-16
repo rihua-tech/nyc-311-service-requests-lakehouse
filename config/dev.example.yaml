@@ -1,6 +1,6 @@
 # Public-safe development config template.
-# For a real cloud run, copy config/dev.example.yaml to config/dev.yaml in
-# your local workspace and replace the placeholders with non-secret values.
+# Copy this file to config/dev.yaml for local cloud experimentation and replace
+# placeholders with non-secret Azure, ADF, and Databricks identifiers.
 
 environment: dev
 
