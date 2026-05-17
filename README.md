@@ -24,7 +24,7 @@ Azure-first medallion lakehouse project for NYC 311 operational analytics. The p
 
 ## Architecture Diagram
 
-![NYC 311 lakehouse architecture](docs/screenshots/milestone-11/m11_end_to_end_architecture.png)
+![NYC 311 Lakehouse Architecture](docs/architecture/nyc311-lakehouse-architecture.png)
 
 Larger view and supporting notes: [docs/architecture/architecture-diagram.md](docs/architecture/architecture-diagram.md).
 
