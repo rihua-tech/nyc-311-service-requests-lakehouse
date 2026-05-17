@@ -95,7 +95,7 @@ Questions supported:
 ## Proof details
 
 <details>
-<summary>Milestone 9 â€” Databricks + ADLS notebook execution</summary>
+<summary>Milestone 9 - Databricks + ADLS notebook execution</summary>
 
 - First real Azure Databricks + ADLS notebook execution for setup, bronze, silver, gold, and validation.
 - Confirmed secret lookups, catalog access, ADLS read/write, and ADLS-backed Delta outputs.
@@ -105,7 +105,7 @@ Questions supported:
 </details>
 
 <details>
-<summary>Milestone 10 â€” Databricks Jobs & Pipelines workflow</summary>
+<summary>Milestone 10 - Databricks Jobs & Pipelines workflow</summary>
 
 - Added a real Databricks workflow in Jobs & Pipelines using the same notebook chain proven in Milestone 9.
 - Confirmed task dependencies, parameterized runs, DAG visibility, and end-to-end workflow execution.
@@ -115,7 +115,7 @@ Questions supported:
 </details>
 
 <details>
-<summary>Milestone 11 â€” ADF REST to ADLS landing + Databricks handoff</summary>
+<summary>Milestone 11 - ADF REST to ADLS landing + Databricks handoff</summary>
 
 - Added a real ADF REST -> ADLS raw landing and ADF -> Databricks notebook handoff using `ingestion_mode=adf_landed_raw`.
 - The handoff contract passes `environment`, `catalog`, `run_date`, `batch_id`, `window_start`, `window_end`, `ingestion_mode`, and `raw_landing_path`.
