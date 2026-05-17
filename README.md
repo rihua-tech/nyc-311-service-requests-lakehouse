@@ -30,18 +30,9 @@ Larger view and supporting notes: [docs/architecture/architecture-diagram.md](do
 
 ## Current Proven Azure Path
 
-```mermaid
-flowchart TD
-    A[NYC 311 API] --> B[Azure Data Factory pipeline]
-    B --> C[ADLS raw JSON landing]
-    C --> D[Databricks handoff<br/>01_ingest_nyc311_raw<br/>ingestion_mode=adf_landed_raw]
-    D --> E[ADLS-backed Delta bronze]
-    E --> F[Silver]
-    F --> G[Gold]
-    G --> H[Manual / path-based validation]
-```
+![Milestone 11 Proven Azure Path](docs/architecture/current-proven-azure-path.png)
 
-ADF owns extraction, raw JSON landing, and handoff parameters. Databricks owns bronze, silver, and gold processing after the handoff. In `adf_landed_raw` mode, bronze does not advance the source watermark.
+ADF owns extraction, raw JSON landing, and handoff parameters. Databricks owns post-handoff bronze, silver, and gold processing. Validation checks ADLS-backed outputs. In `adf_landed_raw` mode, bronze does not advance the source watermark.
 
 Supporting docs: [pipeline runbook](docs/runbooks/pipeline-runbook.md), [architecture data flow](docs/architecture/data-flow.md), and [storage structure notes](infra/azure/storage-structure.md).
 
@@ -104,7 +95,7 @@ Questions supported:
 ## Proof details
 
 <details>
-<summary>Milestone 9 — Databricks + ADLS notebook execution</summary>
+<summary>Milestone 9 â€” Databricks + ADLS notebook execution</summary>
 
 - First real Azure Databricks + ADLS notebook execution for setup, bronze, silver, gold, and validation.
 - Confirmed secret lookups, catalog access, ADLS read/write, and ADLS-backed Delta outputs.
@@ -114,7 +105,7 @@ Questions supported:
 </details>
 
 <details>
-<summary>Milestone 10 — Databricks Jobs & Pipelines workflow</summary>
+<summary>Milestone 10 â€” Databricks Jobs & Pipelines workflow</summary>
 
 - Added a real Databricks workflow in Jobs & Pipelines using the same notebook chain proven in Milestone 9.
 - Confirmed task dependencies, parameterized runs, DAG visibility, and end-to-end workflow execution.
@@ -124,7 +115,7 @@ Questions supported:
 </details>
 
 <details>
-<summary>Milestone 11 — ADF REST to ADLS landing + Databricks handoff</summary>
+<summary>Milestone 11 â€” ADF REST to ADLS landing + Databricks handoff</summary>
 
 - Added a real ADF REST -> ADLS raw landing and ADF -> Databricks notebook handoff using `ingestion_mode=adf_landed_raw`.
 - The handoff contract passes `environment`, `catalog`, `run_date`, `batch_id`, `window_start`, `window_end`, `ingestion_mode`, and `raw_landing_path`.
